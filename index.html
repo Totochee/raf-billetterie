@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tribune RAF — Réservation des places · Saison 2026-2027</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+
+<!-- ==========================================================================
+     ▄▄▄  ▄▄▄  ▄▄▄▄    TRIBUNE RAF
+     █▄▄▀ █▄▄█ █▄▄     Plateforme privée de réservation — Rodez Aveyron Football
+     ▀ ▀▀ ▀  ▀ ▀       Saison 2026-2027 · fichier unique, 100% gratuit
+
+     ┌────────────────────────────────────────────────────────────────────┐
+     │ TOUT SE CONFIGURE DANS LE BLOC « CONFIG » CI-DESSOUS (ligne ~30).  │
+     │ Rien d'autre à modifier.                                           │
+     └────────────────────────────────────────────────────────────────────┘
+     ========================================================================== -->
+</head>
+<body>
+
+<script>
+/* ==========================================================================
+   1. CONFIG — LE SEUL BLOC À MODIFIER
+   ========================================================================== */
+const CONFIG = {
+
+  /* --- Les 2 administrateurs ------------------------------------------- */
+  admins: [
+    { email: "admin1@mail.fr", nom: "Admin Un",   code: "1111" },
+    { email: "admin2@mail.fr", nom: "Admin Deux", code: "2222" },
+  ],
+
+  /* --- Les 6 utilisateurs ---------------------------------------------- */
+  utilisateurs: [
+    { email: "utilisateur1@mail.fr", nom: "Pierre Dupont",  code: "1234" },
+    { email: "utilisateur2@mail.fr", nom: "Jean Martin",    code: "1234" },
+    { email: "utilisateur3@mail.fr", nom: "Lucas Bernard",  code: "1234" },
+    { email: "utilisateur4@mail.fr", nom: "Marie Fabre",    code: "1234" },
+    { email: "utilisateur5@mail.fr", nom: "Sophie Cazals",  code: "1234" },
+    { email: "utilisateur6@mail.fr", nom: "Thomas Rieu",    code: "1234" },
+  ],
+
+  /* --- Mode partagé (facultatif mais recommandé) ------------------------
+     Vide  → mode LOCAL : chaque navigateur a ses propres données (démo/test).
+     Rempli → mode PARTAGÉ : les 8 comptes voient les mêmes réservations.
+     Voir la marche à suivre (5 min, gratuit) tout en bas du fichier.        */
+  supabaseUrl: "",      // ex: "https://abcdefgh.supabase.co"
+  supabaseKey: "",      // clé "anon public"
+
+  /* --- Divers ----------------------------------------------------------- */
+  lieuParDefaut: "Stade Paul-Lignon, Rodez",
+  rafraichissementSecondes: 8,   // fréquence de synchro en mode partagé
+  seuilAlerte: 2,                // "il ne reste que X places" → alerte rouge
+};
+
+/* --- Matchs pré-remplis (l'admin peut tout modifier ensuite dans l'appli) --
+   ⚠️ Le calendrier officiel 2026-2027 n'était pas publié à la rédaction de ce
+   fichier : ce sont des exemples. Modifiez-les depuis le tableau de bord.   */
+const MATCHS_INITIAUX = [
+  { domicile:"Rodez", adverse:"Laval",    date:"2026-09-17", heure:"20:45", lieu:CONFIG.lieuParDefaut, places:8, ouverture:"2026-09-01T09:00", fermeture:"2026-09-16T18:00" },
+  { domicile:"Rodez", adverse:"Grenoble", date:"2026-09-28", heure:"20:45", lieu:CONFIG.lieuParDefaut, places:8, ouverture:"2026-09-10T09:00", fermeture:"2026-09-27T18:00" },
+  { domicile:"Rodez", adverse:"Bastia",   date:"2026-10-10", heure:"19:00", lieu:CONFIG.lieuParDefaut, places:6, ouverture:"2026-09-25T09:00", fermeture:"2026-10-09T18:00" },
+  { domicile:"Rodez", adverse:"Amiens",   date:"2026-10-24", heure:"20:00", lieu:CONFIG.lieuParDefaut, places:8, ouverture:"2026-10-05T09:00", fermeture:"2026-10-23T18:00" },
+];
+</script>
+
+<style>
+/* ==========================================================================
+   2. STYLE — Rouge Rodez / Blanc / Noir / Gris clair
+   ========================================================================== */
+:root{
+  --rouge:#D6001C;
+  --rouge-sombre:#9E0014;
+  --noir:#111214;
+  --anthracite:#2A2D33;
+  --gris:#6B7079;
+  --gris-clair:#F1F2F4;
+  --bord:#E1E3E7;
+  --blanc:#FFFFFF;
+  --vert:#1D7A4C;
+  --ambre:#C97A00;
+
+  --display:"Oswald", "Arial Narrow", sans-serif;
+  --texte:"Source Sans 3", system-ui, sans-serif;
+  --data:"JetBrains Mono", ui-monospace, monospace;
+
+  --r:10px;
+  --ombre:0 1px 2px rgba(17,18,20,.06), 0 8px 24px -12px rgba(17,18,20,.25);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  font-family:var(--texte);
+  background:var(--gris-clair);
+  color:var(--noir);
+  line-height:1.55;
+  min-height:100vh;
+}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer;border:none;background:none}
+a{color:var(--rouge)}
+
+/* --- Barres latérales rouge/noir : la signature « maillot » ------------- */
+.rayures{
+  height:6px;
+  background:repeating-linear-gradient(90deg,var(--rouge) 0 28px,var(--noir) 28px 56px);
+}
+
+/* --- En-tête ----------------------------------------------------------- */
+.entete{background:var(--noir);color:var(--blanc);position:sticky;top:0;z-index:40}
+.entete-in{max-width:1120px;margin:0 auto;padding:14px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.logo{display:flex;align-items:center;gap:11px;margin-right:auto}
+.ecusson{
+  width:36px;height:40px;flex:none;
+  background:linear-gradient(160deg,var(--rouge),var(--rouge-sombre));
+  clip-path:polygon(0 0,100% 0,100% 66%,50% 100%,0 66%);
+  display:grid;place-items:center;
+  font-family:var(--display);font-weight:700;font-size:15px;letter-spacing:.5px;
+  padding-bottom:8px;
+}
+.logo b{font-family:var(--display);font-weight:600;font-size:19px;letter-spacing:1.5px;text-transform:uppercase;display:block;line-height:1.1}
+.logo span{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#9AA0A9}
+.onglets{display:flex;gap:4px;background:#1D1F23;padding:4px;border-radius:8px}
+.onglets button{
+  font-family:var(--display);font-size:13px;letter-spacing:1px;text-transform:uppercase;
+  color:#9AA0A9;padding:7px 14px;border-radius:5px;transition:.15s;
+}
+.onglets button:hover{color:var(--blanc)}
+.onglets button[aria-current="true"]{background:var(--rouge);color:var(--blanc)}
+.qui{display:flex;align-items:center;gap:10px;font-size:13px}
+.qui em{font-style:normal;color:#9AA0A9}
+.badge-admin{
+  font-family:var(--data);font-size:10px;font-weight:700;letter-spacing:1px;
+  background:var(--rouge);padding:2px 6px;border-radius:3px;
+}
+.lien-quitter{color:#9AA0A9;font-size:13px;text-decoration:underline;text-underline-offset:3px}
+.lien-quitter:hover{color:var(--blanc)}
+
+/* --- Layout ------------------------------------------------------------ */
+.page{max-width:1120px;margin:0 auto;padding:28px 20px 80px}
+.titre-section{
+  font-family:var(--display);font-weight:600;font-size:13px;letter-spacing:2.5px;
+  text-transform:uppercase;color:var(--gris);
+  display:flex;align-items:center;gap:14px;margin:34px 0 16px;
+}
+.titre-section::after{content:"";flex:1;height:1px;background:var(--bord)}
+.titre-section:first-child{margin-top:0}
+
+/* --- Carte match ------------------------------------------------------- */
+.grille{display:grid;gap:16px;grid-template-columns:repeat(auto-fill,minmax(330px,1fr))}
+.match{
+  background:var(--blanc);border:1px solid var(--bord);border-radius:var(--r);
+  overflow:hidden;box-shadow:var(--ombre);
+  display:flex;flex-direction:column;
+  animation:monte .35s cubic-bezier(.2,.8,.3,1) backwards;
+}
+@keyframes monte{from{opacity:0;transform:translateY(10px)}}
+.match-haut{padding:16px 18px 14px;border-bottom:1px solid var(--bord);position:relative}
+.match-haut::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--bord)}
+.match.est-ouvert .match-haut::before{background:var(--rouge)}
+.match.est-complet .match-haut::before{background:var(--noir)}
+.rangee{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.affiche{font-family:var(--display);font-weight:600;font-size:22px;line-height:1.15;text-transform:uppercase;letter-spacing:.5px}
+.affiche i{font-style:normal;color:var(--rouge);margin:0 4px}
+.quand{font-family:var(--data);font-size:12px;color:var(--gris);margin-top:5px}
+.ou{font-size:12.5px;color:var(--gris);margin-top:2px}
+
+.etat{
+  font-family:var(--display);font-size:11px;font-weight:600;letter-spacing:1.4px;text-transform:uppercase;
+  padding:4px 9px;border-radius:4px;white-space:nowrap;flex:none;
+}
+.etat.ouvert{background:#E8F5EE;color:var(--vert)}
+.etat.avenir{background:var(--gris-clair);color:var(--gris)}
+.etat.ferme{background:var(--gris-clair);color:var(--anthracite)}
+.etat.complet{background:var(--noir);color:var(--blanc)}
+
+/* --- Compteur à segments : l'élément signature ------------------------- */
+.compteur{padding:16px 18px;background:#FAFAFB}
+.compteur-tete{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:9px}
+.compteur-tete span{font-size:11px;letter-spacing:1.6px;text-transform:uppercase;color:var(--gris);font-family:var(--display);font-weight:500}
+.chiffres{font-family:var(--data);font-weight:700;font-size:16px}
+.chiffres b{font-size:21px}
+.chiffres.plein{color:var(--noir)}
+.chiffres.alerte{color:var(--rouge)}
+.segments{display:flex;gap:3px}
+.seg{
+  flex:1;height:16px;border-radius:2px;background:var(--bord);
+  transition:background .3s ease, transform .3s ease;
+}
+.seg.libre{background:var(--rouge)}
+.seg.libre.chaud{background:var(--rouge);animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.45}}
+.alerte-texte{
+  margin-top:10px;font-size:12.5px;font-weight:600;color:var(--rouge);
+  display:flex;align-items:center;gap:6px;
+}
+
+/* --- Liste des réservations -------------------------------------------- */
+.reservataires{padding:4px 18px 0;flex:1}
+.ligne-r{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px dashed var(--bord);font-size:14px}
+.ligne-r:last-child{border-bottom:none}
+.ligne-r.moi{font-weight:700}
+.ligne-r.moi .nom::after{content:"vous";font-family:var(--data);font-size:9px;letter-spacing:1px;text-transform:uppercase;background:var(--rouge);color:#fff;padding:1px 5px;border-radius:3px;margin-left:7px;vertical-align:1px}
+.ligne-r .places{font-family:var(--data);font-size:13px;color:var(--gris)}
+.vide{padding:14px 0;font-size:13.5px;color:var(--gris);font-style:italic}
+
+.match-bas{padding:14px 18px 16px;display:flex;gap:8px}
+
+/* --- Boutons ----------------------------------------------------------- */
+.btn{
+  font-family:var(--display);font-weight:500;font-size:14px;letter-spacing:1.2px;text-transform:uppercase;
+  padding:11px 18px;border-radius:6px;transition:.15s;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+}
+.btn:focus-visible{outline:3px solid var(--rouge);outline-offset:2px}
+.btn-plein{background:var(--rouge);color:#fff;flex:1}
+.btn-plein:hover{background:var(--rouge-sombre)}
+.btn-noir{background:var(--noir);color:#fff}
+.btn-noir:hover{background:var(--anthracite)}
+.btn-clair{background:var(--blanc);color:var(--noir);border:1px solid var(--bord)}
+.btn-clair:hover{border-color:var(--noir)}
+.btn-fantome{color:var(--gris);border:1px solid var(--bord)}
+.btn-fantome:hover{color:var(--rouge);border-color:var(--rouge)}
+.btn:disabled{background:var(--gris-clair);color:var(--gris);border-color:var(--bord);cursor:not-allowed}
+.btn-petit{padding:7px 12px;font-size:12px}
+
+/* --- Connexion --------------------------------------------------------- */
+.connexion{min-height:100vh;display:grid;place-items:center;padding:24px;background:var(--noir)}
+.connexion-boite{width:100%;max-width:400px;background:var(--blanc);border-radius:14px;overflow:hidden;box-shadow:0 30px 60px -20px rgba(0,0,0,.6)}
+.connexion-haut{background:var(--noir);color:#fff;padding:30px 28px 26px;text-align:center}
+.connexion-haut .ecusson{margin:0 auto 14px;width:50px;height:56px;font-size:20px;padding-bottom:11px}
+.connexion-haut h1{font-family:var(--display);font-weight:600;font-size:26px;letter-spacing:2px;text-transform:uppercase}
+.connexion-haut p{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:#9AA0A9;margin-top:4px}
+.connexion-corps{padding:26px 28px 28px;display:grid;gap:14px}
+label{font-family:var(--display);font-size:12px;font-weight:500;letter-spacing:1.5px;text-transform:uppercase;color:var(--gris);display:block;margin-bottom:6px}
+input,select,textarea{
+  width:100%;padding:11px 13px;border:1px solid var(--bord);border-radius:7px;background:var(--blanc);
+  transition:.15s;
+}
+input:focus,select:focus{outline:none;border-color:var(--rouge);box-shadow:0 0 0 3px rgba(214,0,28,.14)}
+.erreur{background:#FDECEE;color:var(--rouge-sombre);border-left:3px solid var(--rouge);padding:9px 12px;border-radius:5px;font-size:13.5px}
+.note{font-size:12px;color:var(--gris);line-height:1.5}
+
+/* --- Modale ------------------------------------------------------------ */
+.voile{position:fixed;inset:0;background:rgba(17,18,20,.62);backdrop-filter:blur(3px);z-index:60;display:grid;place-items:center;padding:20px;animation:fondu .2s}
+@keyframes fondu{from{opacity:0}}
+.modale{
+  background:var(--blanc);border-radius:14px;width:100%;max-width:480px;max-height:90vh;overflow:auto;
+  box-shadow:0 30px 70px -20px rgba(0,0,0,.5);animation:monte .28s cubic-bezier(.2,.8,.3,1);
+}
+.modale-haut{padding:20px 22px;border-bottom:1px solid var(--bord);display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.modale-haut h2{font-family:var(--display);font-weight:600;font-size:21px;text-transform:uppercase;letter-spacing:.6px}
+.modale-haut p{font-family:var(--data);font-size:12px;color:var(--gris);margin-top:3px}
+.fermer{font-size:26px;line-height:1;color:var(--gris);padding:0 4px}
+.fermer:hover{color:var(--noir)}
+.modale-corps{padding:22px}
+.modale-bas{padding:0 22px 22px;display:flex;gap:8px}
+
+/* --- Sélecteur de places ----------------------------------------------- */
+.choix{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:8px;margin-top:6px}
+.choix button{
+  border:1.5px solid var(--bord);border-radius:8px;padding:12px 4px;background:var(--blanc);
+  font-family:var(--data);font-weight:700;font-size:19px;transition:.13s;
+}
+.choix button small{display:block;font-family:var(--texte);font-weight:400;font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--gris);margin-top:2px}
+.choix button:hover{border-color:var(--noir);transform:translateY(-2px)}
+.choix button[aria-pressed="true"]{background:var(--rouge);border-color:var(--rouge);color:#fff}
+.choix button[aria-pressed="true"] small{color:rgba(255,255,255,.8)}
+
+/* --- Formulaires ------------------------------------------------------- */
+.form-grille{display:grid;gap:14px;grid-template-columns:1fr 1fr}
+.form-grille .large{grid-column:1/-1}
+@media(max-width:560px){.form-grille{grid-template-columns:1fr}}
+
+/* --- Admin ------------------------------------------------------------- */
+.stats{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.stat{background:var(--blanc);border:1px solid var(--bord);border-radius:var(--r);padding:16px 18px}
+.stat b{display:block;font-family:var(--data);font-weight:700;font-size:28px;line-height:1.1}
+.stat span{font-family:var(--display);font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:var(--gris)}
+.stat.accent{background:var(--noir);color:#fff}
+.stat.accent span{color:#9AA0A9}
+.stat.accent b{color:var(--rouge)}
+
+.tableau-boite{background:var(--blanc);border:1px solid var(--bord);border-radius:var(--r);overflow:auto}
+table{width:100%;border-collapse:collapse;font-size:14px;min-width:640px}
+th{
+  font-family:var(--display);font-weight:500;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--gris);
+  text-align:left;padding:11px 14px;border-bottom:1px solid var(--bord);background:#FAFAFB;white-space:nowrap;
+}
+td{padding:11px 14px;border-bottom:1px solid var(--bord);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+td.num{font-family:var(--data);font-weight:700}
+.actions-cellule{display:flex;gap:6px;flex-wrap:wrap}
+
+.barre-outils{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.barre-outils .pousse{margin-left:auto}
+
+/* --- Notifications ----------------------------------------------------- */
+#toasts{position:fixed;right:16px;bottom:16px;z-index:80;display:grid;gap:8px;max-width:min(340px,calc(100vw - 32px))}
+.toast{
+  background:var(--noir);color:#fff;padding:12px 15px;border-radius:8px;font-size:14px;
+  box-shadow:0 12px 30px -8px rgba(0,0,0,.5);border-left:3px solid var(--rouge);
+  animation:entre .3s cubic-bezier(.2,.8,.3,1);
+}
+.toast.ok{border-left-color:#3ECF7E}
+.toast.ko{border-left-color:#FF5A5A}
+@keyframes entre{from{opacity:0;transform:translateX(24px)}}
+
+/* --- Bandeau mode ------------------------------------------------------ */
+.bandeau{
+  background:#FFF8E6;border:1px solid #F0DCA8;border-radius:var(--r);
+  padding:12px 15px;font-size:13.5px;color:#6B4E00;margin-bottom:20px;line-height:1.5;
+}
+.bandeau b{color:#4A3600}
+
+.rien{text-align:center;padding:60px 20px;color:var(--gris)}
+.rien h3{font-family:var(--display);font-size:20px;text-transform:uppercase;letter-spacing:1px;color:var(--anthracite);margin-bottom:6px}
+
+@media(max-width:640px){
+  .entete-in{padding:12px 14px;gap:10px}
+  .logo{width:100%;margin-right:0}
+  .onglets{width:100%}
+  .onglets button{flex:1;padding:8px 4px}
+  .qui{width:100%;justify-content:space-between}
+  .page{padding:20px 14px 70px}
+  .affiche{font-size:19px}
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div id="app"></div>
+<div id="toasts" aria-live="polite"></div>
+
+<script>
+/* ==========================================================================
+   3. DONNÉES — pilote local ou pilote Supabase
+   ========================================================================== */
+const MODE_PARTAGE = !!(CONFIG.supabaseUrl && CONFIG.supabaseKey);
+const CLE = "raf_2627_state";
+const CLE_SESSION = "raf_2627_session";
+
+let etat = { matchs: [], reservations: [] };
+let session = null;
+let vue = "matchs";
+let modale = null;
+let memoire = {};   // secours si le navigateur bloque localStorage
+
+const stock = {
+  lire(k){ try{ return localStorage.getItem(k); }catch(e){ return memoire[k] ?? null; } },
+  ecrire(k,v){ try{ localStorage.setItem(k,v); }catch(e){ memoire[k]=v; } },
+  effacer(k){ try{ localStorage.removeItem(k); }catch(e){ delete memoire[k]; } },
+};
+
+const sbTete = () => ({
+  apikey: CONFIG.supabaseKey,
+  Authorization: "Bearer " + CONFIG.supabaseKey,
+  "Content-Type": "application/json",
+});
+
+async function chargerEtat(){
+  if(MODE_PARTAGE){
+    try{
+      const r = await fetch(`${CONFIG.supabaseUrl}/rest/v1/raf_state?id=eq.1&select=data`, { headers: sbTete() });
+      if(!r.ok) throw new Error("HTTP " + r.status);
+      const lignes = await r.json();
+      if(lignes.length && lignes[0].data){ return lignes[0].data; }
+      const depart = etatInitial();
+      await enregistrerEtat(depart);
+      return depart;
+    }catch(e){
+      toast("Serveur injoignable, passage en données locales", "ko");
+      console.error(e);
+    }
+  }
+  const brut = stock.lire(CLE);
+  if(brut){ try{ return JSON.parse(brut); }catch(e){} }
+  const depart = etatInitial();
+  await enregistrerEtat(depart);
+  return depart;
+}
+
+async function enregistrerEtat(e){
+  const data = e || etat;
+  stock.ecrire(CLE, JSON.stringify(data));
+  if(MODE_PARTAGE){
+    try{
+      const r = await fetch(`${CONFIG.supabaseUrl}/rest/v1/raf_state?on_conflict=id`, {
+        method: "POST",
+        headers: { ...sbTete(), Prefer: "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify({ id: 1, data }),
+      });
+      if(!r.ok) throw new Error("HTTP " + r.status);
+    }catch(e2){
+      toast("Enregistrement en ligne impossible", "ko");
+      console.error(e2);
+    }
+  }
+}
+
+function etatInitial(){
+  return {
+    matchs: MATCHS_INITIAUX.map((m,i)=>({ id:"m"+(i+1), ferme:false, ...m })),
+    reservations: [],
+  };
+}
+
+/* ==========================================================================
+   4. RÈGLES MÉTIER
+   ========================================================================== */
+const tousLesComptes = () => [
+  ...CONFIG.admins.map(c=>({...c, role:"admin"})),
+  ...CONFIG.utilisateurs.map(c=>({...c, role:"user"})),
+];
+const compteDe = mail => tousLesComptes().find(c => c.email.toLowerCase() === String(mail).trim().toLowerCase());
+const estAdmin = () => session?.role === "admin";
+
+const resaDuMatch  = id => etat.reservations.filter(r => r.matchId === id);
+const prises       = id => resaDuMatch(id).reduce((s,r)=>s+r.places, 0);
+const restantes    = m  => Math.max(0, m.places - prises(m.id));
+const maResa       = id => etat.reservations.find(r => r.matchId === id && r.email === session.email);
+
+function statut(m){
+  const now = new Date();
+  if(restantes(m) <= 0)                      return { cle:"complet", mot:"Complet" };
+  if(m.ferme)                                return { cle:"ferme",   mot:"Fermé" };
+  if(m.ouverture && now < new Date(m.ouverture)) return { cle:"avenir", mot:"À venir" };
+  if(m.fermeture && now > new Date(m.fermeture)) return { cle:"ferme",  mot:"Fermé" };
+  return { cle:"ouvert", mot:"Ouvert" };
+}
+const reservable = m => statut(m).cle === "ouvert";
+
+const matchsTries = () => [...etat.matchs].sort((a,b)=>
+  (a.date+"T"+(a.heure||"00:00")).localeCompare(b.date+"T"+(b.heure||"00:00")));
+
+/* --- Formats ----------------------------------------------------------- */
+const MOIS = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+const JOURS = ["dimanche","lundi","mardi","mercredi","jeudi","vendredi","samedi"];
+function dateLongue(iso){
+  const d = new Date(iso + "T12:00:00");
+  return `${JOURS[d.getDay()]} ${d.getDate()} ${MOIS[d.getMonth()]} ${d.getFullYear()}`;
+}
+function moisAnnee(iso){
+  const d = new Date(iso + "T12:00:00");
+  return `${MOIS[d.getMonth()]} ${d.getFullYear()}`;
+}
+const heureFr = h => h ? h.replace(":", "h") : "";
+function dateHeureCourte(iso){
+  if(!iso) return "—";
+  const d = new Date(iso);
+  return `${String(d.getDate()).padStart(2,"0")}/${String(d.getMonth()+1).padStart(2,"0")} à ${String(d.getHours()).padStart(2,"0")}h${String(d.getMinutes()).padStart(2,"0")}`;
+}
+const echap = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const motPlaces = n => n > 1 ? "places" : "place";
+
+/* ==========================================================================
+   5. NOTIFICATIONS
+   ========================================================================== */
+function toast(message, type){
+  const zone = document.getElementById("toasts");
+  const el = document.createElement("div");
+  el.className = "toast " + (type || "");
+  el.textContent = message;
+  zone.appendChild(el);
+  setTimeout(()=>{ el.style.transition="opacity .3s"; el.style.opacity="0"; setTimeout(()=>el.remove(),300); }, 3600);
+}
+
+/* ==========================================================================
+   6. RENDU
+   ========================================================================== */
+const app = document.getElementById("app");
+
+function rendre(){
+  if(!session){ app.innerHTML = vueConnexion(); return brancher(); }
+  app.innerHTML = `
+    <div class="rayures"></div>
+    ${entete()}
+    <main class="page">${ vue==="admin" && estAdmin() ? vueAdmin() : vue==="mesresas" ? vueMesResas() : vueMatchs() }</main>
+    ${ modale ? vueModale() : "" }
+  `;
+  brancher();
+}
+
+/* --- Connexion --------------------------------------------------------- */
+let erreurConnexion = "";
+function vueConnexion(){
+  return `
+  <div class="connexion">
+    <div class="connexion-boite">
+      <div class="rayures"></div>
+      <div class="connexion-haut">
+        <div class="ecusson">RAF</div>
+        <h1>Tribune RAF</h1>
+        <p>Saison 2026 · 2027</p>
+      </div>
+      <form class="connexion-corps" id="f-connexion">
+        ${ erreurConnexion ? `<div class="erreur">${echap(erreurConnexion)}</div>` : "" }
+        <div>
+          <label for="i-mail">Adresse mail</label>
+          <input id="i-mail" type="email" autocomplete="username" placeholder="prenom@mail.fr" required>
+        </div>
+        <div>
+          <label for="i-code">Code d'accès</label>
+          <input id="i-code" type="password" inputmode="numeric" autocomplete="current-password" placeholder="••••" required>
+        </div>
+        <button class="btn btn-plein" type="submit">Entrer</button>
+        <p class="note">Plateforme privée : seules les 8 adresses inscrites dans la configuration peuvent se connecter.</p>
+      </form>
+    </div>
+  </div>`;
+}
+
+/* --- En-tête ----------------------------------------------------------- */
+function entete(){
+  const onglet = (cle,txt) => `<button data-vue="${cle}" aria-current="${vue===cle}">${txt}</button>`;
+  return `
+  <header class="entete">
+    <div class="entete-in">
+      <div class="logo">
+        <div class="ecusson">RAF</div>
+        <div><b>Tribune RAF</b><span>Saison 2026-2027</span></div>
+      </div>
+      <nav class="onglets">
+        ${onglet("matchs","Matchs")}
+        ${onglet("mesresas","Mes réservations")}
+        ${ estAdmin() ? onglet("admin","Tableau de bord") : "" }
+      </nav>
+      <div class="qui">
+        <em>${echap(session.nom)}</em>
+        ${ estAdmin() ? '<span class="badge-admin">Admin</span>' : "" }
+        <button class="lien-quitter" id="b-quitter">Se déconnecter</button>
+      </div>
+    </div>
+  </header>`;
+}
+
+/* --- Compteur à segments ----------------------------------------------- */
+function compteur(m){
+  const libre = restantes(m), total = m.places;
+  const alerte = libre > 0 && libre <= CONFIG.seuilAlerte;
+  const segs = Array.from({length: total}, (_,i) =>
+    `<span class="seg ${ i < libre ? "libre" : "" } ${ alerte ? "chaud" : "" }"></span>`).join("");
+  return `
+  <div class="compteur">
+    <div class="compteur-tete">
+      <span>Places disponibles</span>
+      <div class="chiffres ${ libre===0 ? "plein" : alerte ? "alerte" : "" }"><b>${libre}</b> / ${total}</div>
+    </div>
+    <div class="segments" role="img" aria-label="${libre} ${motPlaces(libre)} restantes sur ${total}">${segs}</div>
+    ${ libre === 0
+        ? `<p class="alerte-texte">◼ Complet — plus aucune place</p>`
+        : alerte ? `<p class="alerte-texte">▲ Il ne reste que ${libre} ${motPlaces(libre)}</p>` : "" }
+  </div>`;
+}
+
+/* --- Liste des matchs -------------------------------------------------- */
+function vueMatchs(){
+  const liste = matchsTries();
+  if(!liste.length) return `<div class="rien"><h3>Aucun match au calendrier</h3><p>Un administrateur doit d'abord ajouter les rencontres de la saison.</p></div>`;
+
+  let html = bandeauMode(), moisCourant = "";
+  liste.forEach((m, i) => {
+    const mois = moisAnnee(m.date);
+    if(mois !== moisCourant){
+      if(moisCourant) html += `</div>`;
+      html += `<h2 class="titre-section">${mois}</h2><div class="grille">`;
+      moisCourant = mois;
+    }
+    html += carteMatch(m, i);
+  });
+  return html + `</div>`;
+}
+
+function carteMatch(m, i){
+  const st = statut(m), libre = restantes(m), mienne = maResa(m.id);
+  const resas = resaDuMatch(m.id);
+
+  let bas;
+  if(mienne){
+    bas = `
+      <button class="btn btn-clair" data-reserver="${m.id}" ${ st.cle==="ouvert"||libre>0 ? "" : "disabled" }>Modifier</button>
+      <button class="btn btn-fantome" data-annuler="${m.id}">Annuler</button>`;
+  } else {
+    bas = `<button class="btn btn-plein" data-reserver="${m.id}" ${ reservable(m) ? "" : "disabled" }>
+        ${ st.cle==="complet" ? "Complet" : st.cle==="avenir" ? "Ouverture le " + dateHeureCourte(m.ouverture) : st.cle==="ferme" ? "Réservations fermées" : "Réserver" }
+      </button>`;
+  }
+
+  return `
+  <article class="match ${ st.cle==="ouvert" ? "est-ouvert" : "" } ${ st.cle==="complet" ? "est-complet" : "" }" style="animation-delay:${Math.min(i,8)*35}ms">
+    <div class="match-haut">
+      <div class="rangee">
+        <div>
+          <h3 class="affiche">${echap(m.domicile)} <i>—</i> ${echap(m.adverse)}</h3>
+          <p class="quand">${dateLongue(m.date)} · ${heureFr(m.heure)}</p>
+          <p class="ou">${echap(m.lieu || "")}</p>
+        </div>
+        <span class="etat ${st.cle}">${st.mot}</span>
+      </div>
+    </div>
+    ${compteur(m)}
+    <div class="reservataires">
+      ${ resas.length
+          ? resas.map(r=>`<div class="ligne-r ${ r.email===session.email ? "moi" : "" }">
+                <span class="nom">${echap(r.nom)}</span>
+                <span class="places">${r.places} ${motPlaces(r.places)}</span>
+              </div>`).join("")
+          : `<p class="vide">Personne n'a encore réservé.</p>` }
+    </div>
+    <div class="match-bas">${bas}</div>
+  </article>`;
+}
+
+function bandeauMode(){
+  if(MODE_PARTAGE) return "";
+  return `<div class="bandeau">
+    <b>Mode local.</b> Les réservations sont enregistrées dans ce navigateur uniquement : les 8 comptes ne voient pas encore les mêmes données.
+    Pour activer le partage, renseignez <code>supabaseUrl</code> et <code>supabaseKey</code> dans le bloc CONFIG (marche à suivre en commentaire à la fin du fichier).
+  </div>`;
+}
+
+/* --- Mes réservations -------------------------------------------------- */
+function vueMesResas(){
+  const miennes = etat.reservations.filter(r => r.email === session.email)
+    .map(r => ({ r, m: etat.matchs.find(m => m.id === r.matchId) }))
+    .filter(x => x.m)
+    .sort((a,b)=> a.m.date.localeCompare(b.m.date));
+
+  const total = miennes.reduce((s,x)=>s+x.r.places,0);
+  const aujourdhui = new Date().toISOString().slice(0,10);
+  const avenir = miennes.filter(x => x.m.date >= aujourdhui);
+  const passees = miennes.filter(x => x.m.date < aujourdhui);
+
+  if(!miennes.length) return `<div class="rien"><h3>Aucune réservation</h3><p>Rendez-vous dans l'onglet Matchs pour réserver vos places.</p></div>`;
+
+  const tableau = (lignes, avecActions) => `
+    <div class="tableau-boite"><table>
+      <thead><tr><th>Match</th><th>Date</th><th>Places</th><th>Réservé le</th>${ avecActions ? "<th></th>" : "" }</tr></thead>
+      <tbody>${ lignes.map(({r,m})=>`
+        <tr>
+          <td><strong>${echap(m.domicile)} — ${echap(m.adverse)}</strong></td>
+          <td>${dateLongue(m.date)} · ${heureFr(m.heure)}</td>
+          <td class="num">${r.places}</td>
+          <td>${dateHeureCourte(r.majLe || r.creeLe)}</td>
+          ${ avecActions ? `<td><div class="actions-cellule">
+              <button class="btn btn-clair btn-petit" data-reserver="${m.id}">Modifier</button>
+              <button class="btn btn-fantome btn-petit" data-annuler="${m.id}">Annuler</button>
+            </div></td>` : "" }
+        </tr>`).join("") }</tbody>
+    </table></div>`;
+
+  return `
+    <div class="stats">
+      <div class="stat accent"><b>${total}</b><span>Places réservées</span></div>
+      <div class="stat"><b>${avenir.length}</b><span>Matchs à venir</span></div>
+      <div class="stat"><b>${passees.length}</b><span>Matchs passés</span></div>
+    </div>
+    ${ avenir.length ? `<h2 class="titre-section">À venir</h2>${tableau(avenir, true)}` : "" }
+    ${ passees.length ? `<h2 class="titre-section">Historique</h2>${tableau(passees, false)}` : "" }`;
+}
+
+/* --- Tableau de bord admin --------------------------------------------- */
+function vueAdmin(){
+  const liste = matchsTries();
+  const totalPlaces = liste.reduce((s,m)=>s+m.places,0);
+  const totalPrises = etat.reservations.reduce((s,r)=>s+r.places,0);
+  const taux = totalPlaces ? Math.round(totalPrises/totalPlaces*100) : 0;
+  const actifs = new Set(etat.reservations.map(r=>r.email)).size;
+
+  return `
+    ${bandeauMode()}
+    <div class="barre-outils">
+      <button class="btn btn-plein" id="b-nouveau" style="flex:none">+ Ajouter un match</button>
+      <button class="btn btn-clair" id="b-csv">Exporter en CSV</button>
+      <button class="btn btn-fantome pousse" id="b-reset-tout">Réinitialiser toutes les réservations</button>
+    </div>
+
+    <h2 class="titre-section">Statistiques</h2>
+    <div class="stats">
+      <div class="stat"><b>${liste.length}</b><span>Matchs</span></div>
+      <div class="stat"><b>${totalPlaces}</b><span>Places au total</span></div>
+      <div class="stat accent"><b>${totalPrises}</b><span>Places réservées</span></div>
+      <div class="stat"><b>${totalPlaces-totalPrises}</b><span>Places restantes</span></div>
+      <div class="stat"><b>${taux}%</b><span>Taux de remplissage</span></div>
+      <div class="stat"><b>${actifs}/8</b><span>Comptes actifs</span></div>
+    </div>
+
+    <h2 class="titre-section">Gestion des matchs</h2>
+    <div class="tableau-boite"><table>
+      <thead><tr><th>Match</th><th>Date</th><th>Ouverture</th><th>Fermeture</th><th>Statut</th><th>Places</th><th>Actions</th></tr></thead>
+      <tbody>${ liste.length ? liste.map(m=>{
+        const st = statut(m);
+        return `<tr>
+          <td><strong>${echap(m.domicile)} — ${echap(m.adverse)}</strong><br><span class="note">${echap(m.lieu||"")}</span></td>
+          <td>${dateLongue(m.date)}<br><span class="note">${heureFr(m.heure)}</span></td>
+          <td class="note">${dateHeureCourte(m.ouverture)}</td>
+          <td class="note">${dateHeureCourte(m.fermeture)}</td>
+          <td><span class="etat ${st.cle}">${st.mot}</span></td>
+          <td class="num">${restantes(m)}/${m.places}</td>
+          <td><div class="actions-cellule">
+            <button class="btn btn-clair btn-petit" data-editer="${m.id}">Modifier</button>
+            <button class="btn btn-clair btn-petit" data-bascule="${m.id}">${ m.ferme ? "Ouvrir" : "Fermer" }</button>
+            <button class="btn btn-fantome btn-petit" data-vider="${m.id}">Vider</button>
+            <button class="btn btn-fantome btn-petit" data-supprimer="${m.id}">Supprimer</button>
+          </div></td>
+        </tr>`; }).join("")
+        : `<tr><td colspan="7"><p class="vide">Aucun match. Commencez par en ajouter un.</p></td></tr>` }
+      </tbody>
+    </table></div>
+
+    <h2 class="titre-section">Toutes les réservations</h2>
+    ${ liste.filter(m=>resaDuMatch(m.id).length).map(m=>`
+      <div class="tableau-boite" style="margin-bottom:14px">
+        <table>
+          <thead><tr><th>${echap(m.domicile)} — ${echap(m.adverse)} · ${dateLongue(m.date)}</th><th>Places</th><th>Modifié le</th><th></th></tr></thead>
+          <tbody>
+            ${ resaDuMatch(m.id).map(r=>`<tr>
+                <td>${echap(r.nom)}<br><span class="note">${echap(r.email)}</span></td>
+                <td class="num">${r.places}</td>
+                <td class="note">${dateHeureCourte(r.majLe || r.creeLe)}</td>
+                <td><button class="btn btn-fantome btn-petit" data-suppr-resa="${r.id}">Retirer</button></td>
+              </tr>`).join("") }
+            <tr style="background:#FAFAFB">
+              <td><strong>Total</strong></td>
+              <td class="num">${prises(m.id)}</td>
+              <td colspan="2" class="note">Places restantes : <strong>${restantes(m)}</strong> sur ${m.places}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>`).join("") || `<div class="tableau-boite"><p class="vide" style="padding:20px">Aucune réservation enregistrée pour l'instant.</p></div>` }`;
+}
+
+/* ==========================================================================
+   7. MODALES
+   ========================================================================== */
+function vueModale(){
+  return `<div class="voile" data-voile>${ modale.type === "reserver" ? modaleReserver() : modaleMatch() }</div>`;
+}
+
+function modaleReserver(){
+  const m = etat.matchs.find(x=>x.id === modale.matchId);
+  const mienne = maResa(m.id);
+  const dejaAMoi = mienne ? mienne.places : 0;
+  const max = restantes(m) + dejaAMoi;
+  const choisi = modale.places ?? dejaAMoi ?? 1;
+
+  const boutons = Array.from({length:max}, (_,i)=> i+1).map(n=>`
+    <button data-places="${n}" aria-pressed="${n===choisi}">${n}<small>${motPlaces(n)}</small></button>`).join("");
+
+  return `
+  <div class="modale" role="dialog" aria-modal="true">
+    <div class="modale-haut">
+      <div>
+        <h2>${echap(m.domicile)} — ${echap(m.adverse)}</h2>
+        <p>${dateLongue(m.date)} · ${heureFr(m.heure)}</p>
+      </div>
+      <button class="fermer" data-fermer aria-label="Fermer">×</button>
+    </div>
+    <div class="modale-corps">
+      ${ max === 0
+        ? `<div class="erreur">Il n'y a plus de place disponible pour ce match.</div>`
+        : `<label>Combien de places ?</label>
+           <div class="choix">${boutons}</div>
+           <p class="note" style="margin-top:12px">${max} ${motPlaces(max)} au maximum${ dejaAMoi ? ` (dont ${dejaAMoi} déjà à votre nom)` : "" }.</p>` }
+    </div>
+    <div class="modale-bas">
+      <button class="btn btn-clair" data-fermer style="flex:1">Retour</button>
+      <button class="btn btn-plein" id="b-confirmer" ${ max===0 ? "disabled" : "" } style="flex:2">
+        ${ dejaAMoi ? "Modifier ma réservation" : "Confirmer la réservation" }
+      </button>
+    </div>
+  </div>`;
+}
+
+function modaleMatch(){
+  const m = modale.match || {};
+  const val = (k,d="") => echap(m[k] ?? d);
+  return `
+  <div class="modale" role="dialog" aria-modal="true">
+    <div class="modale-haut">
+      <div><h2>${ m.id ? "Modifier le match" : "Ajouter un match" }</h2></div>
+      <button class="fermer" data-fermer aria-label="Fermer">×</button>
+    </div>
+    <form class="modale-corps" id="f-match">
+      <div class="form-grille">
+        <div><label for="q-dom">Équipe à domicile</label><input id="q-dom" value="${val("domicile","Rodez")}" required></div>
+        <div><label for="q-adv">Équipe adverse</label><input id="q-adv" value="${val("adverse")}" required></div>
+        <div><label for="q-date">Date du match</label><input id="q-date" type="date" value="${val("date")}" required></div>
+        <div><label for="q-heure">Heure</label><input id="q-heure" type="time" value="${val("heure","20:00")}" required></div>
+        <div class="large"><label for="q-lieu">Lieu</label><input id="q-lieu" value="${val("lieu", CONFIG.lieuParDefaut)}"></div>
+        <div class="large"><label for="q-places">Nombre total de places</label><input id="q-places" type="number" min="1" max="60" value="${val("places",8)}" required></div>
+        <div><label for="q-ouv">Ouverture des réservations</label><input id="q-ouv" type="datetime-local" value="${val("ouverture")}"></div>
+        <div><label for="q-fer">Fermeture des réservations</label><input id="q-fer" type="datetime-local" value="${val("fermeture")}"></div>
+      </div>
+      <p class="note" style="margin-top:12px">Réduire le nombre de places en dessous des réservations déjà prises est refusé.</p>
+    </form>
+    <div class="modale-bas">
+      <button class="btn btn-clair" data-fermer style="flex:1">Annuler</button>
+      <button class="btn btn-plein" id="b-sauver-match" style="flex:2">Enregistrer</button>
+    </div>
+  </div>`;
+}
+
+/* ==========================================================================
+   8. ÉVÉNEMENTS
+   ========================================================================== */
+function brancher(){
+  const $ = s => app.querySelector(s);
+  const $$ = s => app.querySelectorAll(s);
+
+  /* connexion */
+  $("#f-connexion")?.addEventListener("submit", e => {
+    e.preventDefault();
+    const mail = $("#i-mail").value, code = $("#i-code").value;
+    const c = compteDe(mail);
+    if(!c || String(c.code) !== String(code).trim()){
+      erreurConnexion = "Adresse mail ou code d'accès incorrect. Cette plateforme est réservée aux 8 comptes autorisés.";
+      return rendre();
+    }
+    erreurConnexion = "";
+    session = { email:c.email, nom:c.nom, role:c.role };
+    stock.ecrire(CLE_SESSION, JSON.stringify(session));
+    vue = "matchs";
+    toast(`Bienvenue ${c.nom}`, "ok");
+    rendre();
+  });
+
+  $("#b-quitter")?.addEventListener("click", ()=>{
+    session = null; stock.effacer(CLE_SESSION); modale = null; rendre();
+  });
+
+  $$("[data-vue]").forEach(b => b.addEventListener("click", ()=>{ vue = b.dataset.vue; modale = null; rendre(); }));
+
+  /* réserver / annuler */
+  $$("[data-reserver]").forEach(b => b.addEventListener("click", ()=>{
+    modale = { type:"reserver", matchId:b.dataset.reserver, places:null }; rendre();
+  }));
+  $$("[data-annuler]").forEach(b => b.addEventListener("click", ()=> annuler(b.dataset.annuler)));
+
+  /* modale réservation */
+  $$("[data-places]").forEach(b => b.addEventListener("click", ()=>{
+    modale.places = +b.dataset.places;
+    app.querySelectorAll("[data-places]").forEach(x => x.setAttribute("aria-pressed", x === b));
+  }));
+  $("#b-confirmer")?.addEventListener("click", confirmerReservation);
+
+  /* modales : fermeture */
+  $$("[data-fermer]").forEach(b => b.addEventListener("click", ()=>{ modale = null; rendre(); }));
+  $("[data-voile]")?.addEventListener("click", e => { if(e.target.dataset.voile !== undefined){ modale = null; rendre(); } });
+
+  /* admin */
+  $("#b-nouveau")?.addEventListener("click", ()=>{ modale = { type:"match", match:null }; rendre(); });
+  $("#b-csv")?.addEventListener("click", exporterCsv);
+  $("#b-reset-tout")?.addEventListener("click", async ()=>{
+    if(!confirm("Supprimer TOUTES les réservations de la saison ? Les matchs sont conservés.")) return;
+    etat.reservations = []; await enregistrerEtat(); toast("Toutes les réservations ont été réinitialisées","ok"); rendre();
+  });
+  $$("[data-editer]").forEach(b => b.addEventListener("click", ()=>{
+    modale = { type:"match", match: etat.matchs.find(m=>m.id===b.dataset.editer) }; rendre();
+  }));
+  $("#b-sauver-match")?.addEventListener("click", sauverMatch);
+  $$("[data-bascule]").forEach(b => b.addEventListener("click", async ()=>{
+    const m = etat.matchs.find(x=>x.id===b.dataset.bascule);
+    m.ferme = !m.ferme; await enregistrerEtat();
+    toast(m.ferme ? "Réservations fermées" : "Réservations ouvertes", "ok"); rendre();
+  }));
+  $$("[data-vider]").forEach(b => b.addEventListener("click", async ()=>{
+    const m = etat.matchs.find(x=>x.id===b.dataset.vider);
+    if(!confirm(`Vider les réservations de ${m.domicile} — ${m.adverse} ?`)) return;
+    etat.reservations = etat.reservations.filter(r=>r.matchId!==m.id);
+    await enregistrerEtat(); toast("Réservations du match vidées","ok"); rendre();
+  }));
+  $$("[data-supprimer]").forEach(b => b.addEventListener("click", async ()=>{
+    const m = etat.matchs.find(x=>x.id===b.dataset.supprimer);
+    if(!confirm(`Supprimer définitivement ${m.domicile} — ${m.adverse} et ses réservations ?`)) return;
+    etat.matchs = etat.matchs.filter(x=>x.id!==m.id);
+    etat.reservations = etat.reservations.filter(r=>r.matchId!==m.id);
+    await enregistrerEtat(); toast("Match supprimé","ok"); rendre();
+  }));
+  $$("[data-suppr-resa]").forEach(b => b.addEventListener("click", async ()=>{
+    etat.reservations = etat.reservations.filter(r=>r.id!==b.dataset["supprResa"]);
+    await enregistrerEtat(); toast("Réservation retirée","ok"); rendre();
+  }));
+}
+
+document.addEventListener("keydown", e => { if(e.key === "Escape" && modale){ modale = null; rendre(); } });
+
+/* --- Actions ----------------------------------------------------------- */
+async function confirmerReservation(){
+  const m = etat.matchs.find(x=>x.id===modale.matchId);
+  const mienne = maResa(m.id);
+  const n = modale.places ?? (mienne ? mienne.places : 1);
+  const max = restantes(m) + (mienne ? mienne.places : 0);
+
+  if(!reservable(m) && !mienne){ toast("Les réservations ne sont pas ouvertes pour ce match","ko"); return; }
+  if(n < 1 || n > max){ toast(`Impossible : ${max} ${motPlaces(max)} au maximum`,"ko"); return; }
+
+  if(mienne){
+    mienne.places = n; mienne.majLe = new Date().toISOString();
+    toast(`Réservation modifiée : ${n} ${motPlaces(n)}`, "ok");
+  } else {
+    etat.reservations.push({
+      id:"r"+Date.now()+Math.random().toString(36).slice(2,6),
+      matchId:m.id, email:session.email, nom:session.nom,
+      places:n, creeLe:new Date().toISOString(),
+    });
+    toast(`${n} ${motPlaces(n)} réservée${n>1?"s":""} pour ${m.domicile} — ${m.adverse}`, "ok");
+  }
+  await enregistrerEtat();
+  modale = null; rendre();
+}
+
+async function annuler(matchId){
+  const m = etat.matchs.find(x=>x.id===matchId);
+  if(!confirm(`Annuler votre réservation pour ${m.domicile} — ${m.adverse} ?`)) return;
+  etat.reservations = etat.reservations.filter(r => !(r.matchId===matchId && r.email===session.email));
+  await enregistrerEtat();
+  toast("Réservation annulée","ok"); rendre();
+}
+
+async function sauverMatch(){
+  const g = id => document.getElementById(id).value.trim();
+  const donnees = {
+    domicile:g("q-dom"), adverse:g("q-adv"), date:g("q-date"), heure:g("q-heure"),
+    lieu:g("q-lieu"), places:parseInt(g("q-places"),10),
+    ouverture:g("q-ouv"), fermeture:g("q-fer"),
+  };
+  if(!donnees.domicile || !donnees.adverse || !donnees.date || !donnees.heure || !donnees.places){
+    toast("Complétez les équipes, la date, l'heure et le nombre de places","ko"); return;
+  }
+  if(donnees.ouverture && donnees.fermeture && donnees.ouverture >= donnees.fermeture){
+    toast("La fermeture doit être postérieure à l'ouverture","ko"); return;
+  }
+  const existant = modale.match;
+  if(existant){
+    const dejaPrises = prises(existant.id);
+    if(donnees.places < dejaPrises){
+      toast(`${dejaPrises} places sont déjà réservées : impossible de descendre en dessous`,"ko"); return;
+    }
+    Object.assign(existant, donnees);
+    toast("Match modifié","ok");
+  } else {
+    etat.matchs.push({ id:"m"+Date.now(), ferme:false, ...donnees });
+    toast("Match ajouté","ok");
+  }
+  await enregistrerEtat();
+  modale = null; rendre();
+}
+
+function exporterCsv(){
+  const l = [["Match","Date","Heure","Lieu","Nom","Email","Places","Total match","Places totales","Restantes","Statut"]];
+  matchsTries().forEach(m => {
+    const rs = resaDuMatch(m.id), st = statut(m).mot;
+    const base = [`${m.domicile} - ${m.adverse}`, m.date, m.heure, m.lieu||""];
+    if(!rs.length){
+      l.push([...base, "(aucune réservation)","","", prises(m.id), m.places, restantes(m), st]);
+    } else {
+      rs.forEach(r => l.push([...base, r.nom, r.email, r.places, prises(m.id), m.places, restantes(m), st]));
+    }
+  });
+  const csv = "\uFEFF" + l.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(";")).join("\r\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type:"text/csv;charset=utf-8" }));
+  a.download = `reservations-raf-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click(); URL.revokeObjectURL(a.href);
+  toast("Export CSV téléchargé","ok");
+}
+
+/* ==========================================================================
+   9. DÉMARRAGE + SYNCHRO
+   ========================================================================== */
+(async function demarrer(){
+  const s = stock.lire(CLE_SESSION);
+  if(s){ try{ const p = JSON.parse(s); if(compteDe(p.email)) session = p; }catch(e){} }
+  etat = await chargerEtat();
+  rendre();
+
+  // rafraîchissement du statut (À venir → Ouvert → Fermé) et des places
+  setInterval(async ()=>{
+    if(!session || modale) return;
+    if(MODE_PARTAGE){
+      const frais = await chargerEtat();
+      if(JSON.stringify(frais) !== JSON.stringify(etat)){ etat = frais; rendre(); return; }
+    }
+    rendre();
+  }, CONFIG.rafraichissementSecondes * 1000);
+})();
+</script>
+
+<!-- ==========================================================================
+     10. INSTALLATION
+     ==========================================================================
+
+     A. METTRE EN LIGNE SUR GITHUB (2 minutes, gratuit)
+     -------------------------------------------------
+     1. github.com → New repository → nom : "tribune-raf" → Public → Create.
+     2. "uploading an existing file" → glissez ce fichier index.html → Commit.
+     3. Settings → Pages → Source : "Deploy from a branch" → Branch : main / (root) → Save.
+     4. Une minute plus tard le site est en ligne :
+        https://VOTRE-PSEUDO.github.io/tribune-raf/
+     Pour modifier la config ensuite : cliquez sur index.html → l'icône crayon → Commit.
+
+     B. VOS 8 COMPTES
+     ----------------
+     Modifiez le bloc CONFIG en haut du fichier : les mails, les noms et les codes
+     d'accès à 4 chiffres. Donnez son code à chaque personne.
+
+     Sur la sécurité, honnêtement : un site statique n'a pas de serveur, donc les
+     codes sont lisibles par quiconque ouvre le code source. C'est un verrou de
+     confidentialité entre amis (personne ne réserve à la place d'un autre par
+     accident), pas une protection contre quelqu'un de déterminé. Pour 8 proches
+     et des places de foot, c'est le bon niveau. Si vous voulez une vraie
+     authentification, il faut ajouter Supabase Auth (magic link par mail) —
+     dites-le moi et je l'ajoute.
+
+     C. MODE PARTAGÉ : QUE TOUT LE MONDE VOIE LES MÊMES RÉSERVATIONS
+     ---------------------------------------------------------------
+     Sans cette étape, chaque personne ne voit que ses propres réservations
+     (les données restent dans son navigateur). Pour un vrai partage :
+
+     1. supabase.com → Start your project (gratuit, sans carte bancaire).
+     2. New project → notez la région Europe (Frankfurt/Paris).
+     3. Onglet "SQL Editor" → New query → collez ceci → Run :
+
+          create table raf_state (
+            id   int primary key,
+            data jsonb not null default '{}'::jsonb
+          );
+          alter table raf_state enable row level security;
+          create policy "lecture publique"  on raf_state for select using (true);
+          create policy "ecriture publique" on raf_state for insert with check (true);
+          create policy "maj publique"      on raf_state for update using (true);
+          insert into raf_state (id, data) values (1, '{"matchs":[],"reservations":[]}');
+
+     4. Settings → API → copiez "Project URL" et la clé "anon public".
+     5. Collez-les dans CONFIG.supabaseUrl et CONFIG.supabaseKey en haut du fichier.
+     6. Commit sur GitHub. Terminé : les 8 comptes partagent les mêmes données,
+        rafraîchies toutes les 8 secondes.
+
+     Note : la clé "anon" est faite pour être publique, mais avec ces règles RLS
+     toute personne connaissant l'URL du site pourrait écrire dans la table.
+     Là encore : suffisant pour un usage privé entre 8 personnes.
+
+     D. CE QUE FAIT L'APPLI
+     ----------------------
+     · Connexion réservée aux 8 mails de CONFIG, session conservée.
+     · Matchs groupés par mois, statut calculé en direct :
+       À venir (avant l'ouverture) → Ouvert → Fermé (après la fermeture ou
+       fermeture manuelle admin) → Complet (0 place restante).
+     · Compteur à segments façon tribune + alerte rouge sous 2 places restantes.
+     · Réservation par modale, quantité plafonnée aux places réellement libres.
+     · Une seule réservation par personne et par match : le second clic modifie.
+     · Modification, annulation, historique (matchs passés séparés).
+     · Admin : ajout / modification / suppression de match, ouverture et fermeture
+       manuelles, vidage par match, réinitialisation globale, liste complète des
+       réservations avec totaux, statistiques, export CSV (séparateur ";" + BOM,
+       s'ouvre directement dans Excel français).
+     · Responsive PC / tablette / smartphone, animations légères, notifications,
+       navigation clavier, prefers-reduced-motion respecté.
+
+     E. CALENDRIER 2026-2027
+     -----------------------
+     Les 4 matchs pré-remplis sont des exemples : le calendrier officiel n'était
+     pas publié quand ce fichier a été écrit. Ajoutez les vraies rencontres depuis
+     le tableau de bord (elles sont sauvegardées), ou remplacez directement la
+     liste MATCHS_INITIAUX en haut du fichier.
+     ========================================================================== -->
+</body>
+</html>
