@@ -353,32 +353,45 @@ const stock = {
   effacer(k){ try{ localStorage.removeItem(k); }catch(e){ delete memoire[k]; } },
 };
 
-const sbTete = () => ({
-  apikey: CONFIG.supabaseKey,
-  Authorization: "Bearer " + CONFIG.supabaseKey,
-  "Content-Type": "application/json",
-});
+let erreurReseau = "";   // dernier message d'erreur Supabase, affiché à l'écran
+
+// Les clés récentes (sb_publishable_...) ne sont pas des JWT : envoyées dans
+// "Authorization: Bearer", elles peuvent déclencher un 401 "invalid JWT".
+// On ne remplit cet en-tête que pour les anciennes clés anon (format JWT).
+const sbTete = () => {
+  const h = { apikey: CONFIG.supabaseKey, "Content-Type": "application/json" };
+  if(CONFIG.supabaseKey.startsWith("eyJ")) h.Authorization = "Bearer " + CONFIG.supabaseKey;
+  return h;
+};
 
 async function chargerEtat(){
   if(MODE_PARTAGE){
     try{
       const r = await fetch(`${CONFIG.supabaseUrl}/rest/v1/raf_state?id=eq.1&select=data`, { headers: sbTete() });
-      if(!r.ok) throw new Error("HTTP " + r.status);
+      if(!r.ok) throw new Error("HTTP " + r.status + " — " + (await r.text()));
       const lignes = await r.json();
-      if(lignes.length && lignes[0].data){ return lignes[0].data; }
+      erreurReseau = "";
+      if(lignes.length && estInitialise(lignes[0].data)){ return lignes[0].data; }
       const depart = etatInitial();
       await enregistrerEtat(depart);
       return depart;
     }catch(e){
-      toast("Serveur injoignable, passage en données locales", "ko");
-      console.error(e);
+      erreurReseau = "Lecture : " + e.message;
+      toast("Supabase injoignable — données locales", "ko");
+      console.error("[Tribune RAF] Chargement impossible :", e);
     }
   }
   const brut = stock.lire(CLE);
-  if(brut){ try{ return JSON.parse(brut); }catch(e){} }
+  if(brut){ try{ const d = JSON.parse(brut); if(estInitialise(d)) return d; }catch(e){} }
   const depart = etatInitial();
   await enregistrerEtat(depart);
   return depart;
+}
+
+// Une ligne existe peut-être déjà, mais totalement vide (créée par le script SQL) :
+// dans ce cas on la considère comme non initialisée et on sème les matchs de départ.
+function estInitialise(d){
+  return !!(d && d.init === true && Array.isArray(d.matchs) && Array.isArray(d.reservations));
 }
 
 async function enregistrerEtat(e){
@@ -391,16 +404,19 @@ async function enregistrerEtat(e){
         headers: { ...sbTete(), Prefer: "resolution=merge-duplicates,return=minimal" },
         body: JSON.stringify({ id: 1, data }),
       });
-      if(!r.ok) throw new Error("HTTP " + r.status);
+      if(!r.ok) throw new Error("HTTP " + r.status + " — " + (await r.text()));
+      erreurReseau = "";
     }catch(e2){
+      erreurReseau = "Écriture : " + e2.message;
       toast("Enregistrement en ligne impossible", "ko");
-      console.error(e2);
+      console.error("[Tribune RAF] Écriture impossible :", e2);
     }
   }
 }
 
 function etatInitial(){
   return {
+    init: true,
     matchs: MATCHS_INITIAUX.map((m,i)=>({ id:"m"+(i+1), ferme:false, ...m })),
     reservations: [],
   };
@@ -613,6 +629,10 @@ function carteMatch(m, i){
 }
 
 function bandeauMode(){
+  if(erreurReseau) return `<div class="bandeau" style="background:#FDECEE;border-color:#F3B8BF;color:#7A0011">
+    <b>Supabase répond une erreur.</b> Les données restent dans ce navigateur.<br>
+    <code style="font-family:var(--data);font-size:12px">${echap(erreurReseau)}</code>
+  </div>`;
   if(MODE_PARTAGE) return "";
   return `<div class="bandeau">
     <b>Mode local.</b> Les réservations sont enregistrées dans ce navigateur uniquement : les 8 comptes ne voient pas encore les mêmes données.
