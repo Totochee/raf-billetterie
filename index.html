@@ -56,14 +56,28 @@ const CONFIG = {
   seuilAlerte: 2,                // "il ne reste que X places" → alerte rouge
 };
 
-/* --- Matchs pré-remplis (l'admin peut tout modifier ensuite dans l'appli) --
-   ⚠️ Le calendrier officiel 2026-2027 n'était pas publié à la rédaction de ce
-   fichier : ce sont des exemples. Modifiez-les depuis le tableau de bord.   */
+/* --- Calendrier officiel 2026-2027 : les 17 matchs à domicile ------------
+   Importés depuis le fichier Rodez.ics (FotMob), heures converties en heure
+   de Paris. Ouverture des réservations : 14 jours avant, 09h00.
+   Fermeture : la veille du match, 18h00. Modifiable depuis le tableau de bord. */
 const MATCHS_INITIAUX = [
-  { domicile:"Rodez", adverse:"Laval",    date:"2026-09-17", heure:"20:45", lieu:CONFIG.lieuParDefaut, places:8, ouverture:"2026-09-01T09:00", fermeture:"2026-09-16T18:00" },
-  { domicile:"Rodez", adverse:"Grenoble", date:"2026-09-28", heure:"20:45", lieu:CONFIG.lieuParDefaut, places:8, ouverture:"2026-09-10T09:00", fermeture:"2026-09-27T18:00" },
-  { domicile:"Rodez", adverse:"Bastia",   date:"2026-10-10", heure:"19:00", lieu:CONFIG.lieuParDefaut, places:6, ouverture:"2026-09-25T09:00", fermeture:"2026-10-09T18:00" },
-  { domicile:"Rodez", adverse:"Amiens",   date:"2026-10-24", heure:"20:00", lieu:CONFIG.lieuParDefaut, places:8, ouverture:"2026-10-05T09:00", fermeture:"2026-10-23T18:00" },
+  { domicile:"Rodez", adverse:"Laval",           date:"2026-08-08", heure:"20:45", lieu:CONFIG.lieuParDefaut, places:8, ouverture:"2026-07-25T09:00", fermeture:"2026-08-07T18:00" },
+  { domicile:"Rodez", adverse:"Pau",             date:"2026-08-28", heure:"20:00", lieu:CONFIG.lieuParDefaut, places:8, ouverture:"2026-08-14T09:00", fermeture:"2026-08-27T18:00" },
+  { domicile:"Rodez", adverse:"Grenoble",        date:"2026-09-11", heure:"20:00", lieu:CONFIG.lieuParDefaut, places:8, ouverture:"2026-08-28T09:00", fermeture:"2026-09-10T18:00" },
+  { domicile:"Rodez", adverse:"Nancy",           date:"2026-09-18", heure:"20:00", lieu:CONFIG.lieuParDefaut, places:8, ouverture:"2026-09-04T09:00", fermeture:"2026-09-17T18:00" },
+  { domicile:"Rodez", adverse:"Montpellier",     date:"2026-10-16", heure:"20:00", lieu:CONFIG.lieuParDefaut, places:8, ouverture:"2026-10-02T09:00", fermeture:"2026-10-15T18:00" },
+  { domicile:"Rodez", adverse:"Dunkerque",       date:"2026-10-30", heure:"20:00", lieu:CONFIG.lieuParDefaut, places:8, ouverture:"2026-10-16T09:00", fermeture:"2026-10-29T18:00" },
+  { domicile:"Rodez", adverse:"Reims",           date:"2026-12-04", heure:"20:00", lieu:CONFIG.lieuParDefaut, places:8, ouverture:"2026-11-20T09:00", fermeture:"2026-12-03T18:00" },
+  { domicile:"Rodez", adverse:"Red Star",        date:"2027-01-02", heure:"20:00", lieu:CONFIG.lieuParDefaut, places:8, ouverture:"2026-12-19T09:00", fermeture:"2027-01-01T18:00" },
+  { domicile:"Rodez", adverse:"Annecy FC",       date:"2027-01-22", heure:"20:00", lieu:CONFIG.lieuParDefaut, places:8, ouverture:"2027-01-08T09:00", fermeture:"2027-01-21T18:00" },
+  { domicile:"Rodez", adverse:"Nantes",          date:"2027-02-05", heure:"20:00", lieu:CONFIG.lieuParDefaut, places:8, ouverture:"2027-01-22T09:00", fermeture:"2027-02-04T18:00" },
+  { domicile:"Rodez", adverse:"Guingamp",        date:"2027-02-12", heure:"20:00", lieu:CONFIG.lieuParDefaut, places:8, ouverture:"2027-01-29T09:00", fermeture:"2027-02-11T18:00" },
+  { domicile:"Rodez", adverse:"Boulogne",        date:"2027-02-26", heure:"20:00", lieu:CONFIG.lieuParDefaut, places:8, ouverture:"2027-02-12T09:00", fermeture:"2027-02-25T18:00" },
+  { domicile:"Rodez", adverse:"Sochaux",         date:"2027-03-12", heure:"20:00", lieu:CONFIG.lieuParDefaut, places:8, ouverture:"2027-02-26T09:00", fermeture:"2027-03-11T18:00" },
+  { domicile:"Rodez", adverse:"Dijon",           date:"2027-04-02", heure:"20:00", lieu:CONFIG.lieuParDefaut, places:8, ouverture:"2027-03-19T09:00", fermeture:"2027-04-01T18:00" },
+  { domicile:"Rodez", adverse:"Clermont Foot",   date:"2027-04-16", heure:"20:00", lieu:CONFIG.lieuParDefaut, places:8, ouverture:"2027-04-02T09:00", fermeture:"2027-04-15T18:00" },
+  { domicile:"Rodez", adverse:"Metz",            date:"2027-04-30", heure:"20:00", lieu:CONFIG.lieuParDefaut, places:8, ouverture:"2027-04-16T09:00", fermeture:"2027-04-29T18:00" },
+  { domicile:"Rodez", adverse:"Saint-Etienne",   date:"2027-05-14", heure:"20:00", lieu:CONFIG.lieuParDefaut, places:8, ouverture:"2027-04-30T09:00", fermeture:"2027-05-13T18:00" },
 ];
 </script>
 
@@ -413,7 +427,7 @@ async function chargerEtat(){
       if(!r.ok) throw new Error("HTTP " + r.status + " — " + (await r.text()));
       const lignes = await r.json();
       erreurReseau = "";
-      if(lignes.length && estInitialise(lignes[0].data)){ return lignes[0].data; }
+      if(lignes.length && estInitialise(lignes[0].data)){ return await migrer(lignes[0].data); }
       const depart = etatInitial();
       await enregistrerEtat(depart);
       return depart;
@@ -424,16 +438,33 @@ async function chargerEtat(){
     }
   }
   const brut = stock.lire(CLE);
-  if(brut){ try{ const d = JSON.parse(brut); if(estInitialise(d)) return d; }catch(e){} }
+  if(brut){ try{ const d = JSON.parse(brut); if(estInitialise(d)) return await migrer(d); }catch(e){} }
   const depart = etatInitial();
   await enregistrerEtat(depart);
   return depart;
 }
 
+// Version du calendrier livré dans ce fichier. Si la base contient une version
+// plus ancienne, les matchs sont remplacés et les réservations conservées.
+const CALENDRIER_VERSION = "2026-27-domicile-v1";
+
 // Une ligne existe peut-être déjà, mais totalement vide (créée par le script SQL) :
 // dans ce cas on la considère comme non initialisée et on sème les matchs de départ.
 function estInitialise(d){
   return !!(d && d.init === true && Array.isArray(d.matchs) && Array.isArray(d.reservations));
+}
+
+// Met à jour un état existant si le fichier apporte un calendrier plus récent.
+async function migrer(d){
+  if(d.version === CALENDRIER_VERSION) return d;
+  const neuf = etatInitial();
+  const garde = d.reservations.filter(r => neuf.matchs.some(m => m.id === r.matchId));
+  const perdues = d.reservations.length - garde.length;
+  const migre = { ...neuf, reservations: garde };
+  await enregistrerEtat(migre);
+  console.info("[Tribune RAF] Calendrier mis à jour → " + CALENDRIER_VERSION +
+    (perdues ? " (" + perdues + " réservation(s) sur des matchs disparus ont été écartées)" : ""));
+  return migre;
 }
 
 async function enregistrerEtat(e){
@@ -459,6 +490,7 @@ async function enregistrerEtat(e){
 function etatInitial(){
   return {
     init: true,
+    version: CALENDRIER_VERSION,
     matchs: MATCHS_INITIAUX.map((m,i)=>({ id:"m"+(i+1), ferme:false, ...m })),
     reservations: [],
   };
