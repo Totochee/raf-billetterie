@@ -29,14 +29,13 @@ const CONFIG = {
 
   /* --- Les 2 administrateurs ------------------------------------------- */
   admins: [
-    { email: "admin1@mail.fr", nom: "Admin Un",   code: "1111" },
-    { email: "admin2@mail.fr", nom: "Admin Deux", code: "2222" },
-    { email: "theobestion@gmail.com", nom: "Théo BESTION", code: "222830" },
+    { email: "theobestion@gmail.com", nom: "Théo Bestion", code: "4827" },
+    { email: "admin2@mail.fr",        nom: "Admin Deux",   code: "2222" },
   ],
 
   /* --- Les 6 utilisateurs ---------------------------------------------- */
   utilisateurs: [
-    { email: "test@mail.fr",         nom"Test Test",        code: "1234" },
+    { email: "utilisateur1@mail.fr", nom: "Pierre Dupont",  code: "1234" },
     { email: "utilisateur2@mail.fr", nom: "Jean Martin",    code: "1234" },
     { email: "utilisateur3@mail.fr", nom: "Lucas Bernard",  code: "1234" },
     { email: "utilisateur4@mail.fr", nom: "Marie Fabre",    code: "1234" },
@@ -338,6 +337,48 @@ td.num{font-family:var(--data);font-weight:700}
 /* ==========================================================================
    3. DONNÉES — pilote local ou pilote Supabase
    ========================================================================== */
+/* --- Garde-fou : une CONFIG cassée ne doit jamais donner une page blanche --
+   Si le bloc CONFIG contient une erreur de syntaxe, le navigateur n'exécute pas
+   ce script-là et CONFIG n'existe pas. Ce script-ci, lui, tourne toujours :
+   on affiche donc un écran d'explication au lieu du néant.                   */
+(function garde(){
+  const souci = (() => {
+    if(typeof CONFIG === "undefined") return "Le bloc CONFIG n'a pas pu être lu : il contient une erreur de syntaxe.";
+    if(typeof MATCHS_INITIAUX === "undefined") return "La liste MATCHS_INITIAUX n'a pas pu être lue : erreur de syntaxe.";
+    if(!Array.isArray(CONFIG.admins) || !Array.isArray(CONFIG.utilisateurs)) return "CONFIG.admins et CONFIG.utilisateurs doivent être des listes entre crochets [ ].";
+    const tous = [...CONFIG.admins, ...CONFIG.utilisateurs];
+    if(!tous.length) return "Aucun compte n'est déclaré dans CONFIG.";
+    const mauvais = tous.find(c => !c || !c.email || !String(c.email).includes("@") || !c.code);
+    if(mauvais) return "Un compte est incomplet : chaque ligne doit avoir email, nom et code. Vérifiez : " + JSON.stringify(mauvais);
+    const mails = tous.map(c => String(c.email).toLowerCase());
+    const doublon = mails.find((m,i) => mails.indexOf(m) !== i);
+    if(doublon) return "L'adresse " + doublon + " est déclarée deux fois. Chaque mail doit être unique.";
+    return null;
+  })();
+
+  if(!souci) return;
+  document.getElementById("app").innerHTML = `
+    <div style="min-height:100vh;display:grid;place-items:center;padding:24px;background:#111214;font-family:system-ui,sans-serif">
+      <div style="max-width:560px;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 30px 60px -20px rgba(0,0,0,.6)">
+        <div style="height:6px;background:repeating-linear-gradient(90deg,#D6001C 0 28px,#111214 28px 56px)"></div>
+        <div style="padding:26px 28px">
+          <h1 style="font-family:Oswald,sans-serif;font-size:24px;text-transform:uppercase;letter-spacing:1px;margin:0 0 10px">Le bloc CONFIG est cassé</h1>
+          <p style="background:#FDECEE;color:#7A0011;border-left:3px solid #D6001C;padding:10px 12px;border-radius:5px;font-size:14px;margin:0 0 16px">${String(souci).replace(/</g,"&lt;")}</p>
+          <p style="font-size:14.5px;line-height:1.6;color:#2A2D33;margin:0 0 12px">Rouvrez <code>index.html</code> dans un éditeur de texte et vérifiez les trois erreurs classiques :</p>
+          <ol style="font-size:14px;line-height:1.7;color:#2A2D33;padding-left:20px;margin:0 0 16px">
+            <li>Une <strong>virgule manquante</strong> à la fin d'une ligne de compte.</li>
+            <li>Un <strong>guillemet non refermé</strong> autour d'un mail ou d'un nom.</li>
+            <li>Des <strong>guillemets courbes</strong> (&#8220;&#8221;) au lieu des droits (&quot;&quot;) — typique d'un copier-coller depuis Word ou Notes.</li>
+          </ol>
+          <p style="font-size:13.5px;line-height:1.6;color:#6B7079;margin:0">Chaque ligne doit être exactement de cette forme, virgule finale comprise :</p>
+          <pre style="background:#F1F2F4;border:1px solid #E1E3E7;border-radius:6px;padding:11px 13px;font-size:12.5px;overflow:auto;margin:8px 0 0"><code>{ email: "pierre@mail.fr", nom: "Pierre Dupont", code: "1234" },</code></pre>
+          <p style="font-size:13px;color:#6B7079;margin:16px 0 0">Détail technique dans la console du navigateur (F12 → Console) : la ligne fautive y est indiquée par son numéro.</p>
+        </div>
+      </div>
+    </div>`;
+  throw new Error("[Tribune RAF] CONFIG invalide : " + souci);
+})();
+
 const MODE_PARTAGE = !!(CONFIG.supabaseUrl && CONFIG.supabaseKey);
 const CLE = "raf_2627_state";
 const CLE_SESSION = "raf_2627_session";
