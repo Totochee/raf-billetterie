@@ -612,7 +612,7 @@ function vueConnexion(){
           <label for="i-code">Code d'accès</label>
           <div class="champ-code">
             <input id="i-code" type="password" inputmode="text" autocomplete="current-password" autocapitalize="none" spellcheck="false" placeholder="Votre code" required>
-            <button type="button" class="bascule-code" data-toggle-code="i-code" aria-label="Afficher le code" aria-pressed="false">Afficher</button>
+            <button type="button" class="bascule-code" data-toggle-code="i-code" aria-label="Afficher le code" aria-pressed="false" title="Afficher le code"><span class="icone-oeil" aria-hidden="true"></span></button>
           </div>
         </div>
         <button class="btn btn-plein" type="submit">Entrer</button>
@@ -811,8 +811,8 @@ function vueCompte(){
           <p class="note">3 à 24 caractères : lettres, chiffres, point, tiret ou tiret bas.</p>
         </div>
         <div class="form-grille">
-          <div><label for="c-code">Nouveau code</label><div class="champ-code"><input id="c-code" type="password" inputmode="text" minlength="4" maxlength="20" autocomplete="new-password" autocapitalize="none" spellcheck="false" placeholder="Laisser vide pour conserver l'actuel"><button type="button" class="bascule-code" data-toggle-code="c-code" aria-label="Afficher le nouveau code" aria-pressed="false">Afficher</button></div></div>
-          <div><label for="c-code2">Confirmer le code</label><div class="champ-code"><input id="c-code2" type="password" inputmode="text" minlength="4" maxlength="20" autocomplete="new-password" autocapitalize="none" spellcheck="false" placeholder="Répétez le nouveau code"><button type="button" class="bascule-code" data-toggle-code="c-code2" aria-label="Afficher la confirmation du code" aria-pressed="false">Afficher</button></div></div>
+          <div><label for="c-code">Nouveau code</label><div class="champ-code"><input id="c-code" type="password" inputmode="text" minlength="4" maxlength="20" autocomplete="new-password" autocapitalize="none" spellcheck="false" placeholder="Laisser vide pour conserver l'actuel"><button type="button" class="bascule-code" data-toggle-code="c-code" aria-label="Afficher le nouveau code" aria-pressed="false" title="Afficher le code"><span class="icone-oeil" aria-hidden="true"></span></button></div></div>
+          <div><label for="c-code2">Confirmer le code</label><div class="champ-code"><input id="c-code2" type="password" inputmode="text" minlength="4" maxlength="20" autocomplete="new-password" autocapitalize="none" spellcheck="false" placeholder="Répétez le nouveau code"><button type="button" class="bascule-code" data-toggle-code="c-code2" aria-label="Afficher la confirmation du code" aria-pressed="false" title="Afficher le code"><span class="icone-oeil" aria-hidden="true"></span></button></div></div>
         </div>
         <div id="c-erreur" class="erreur" hidden></div>
         <button class="btn btn-plein" type="submit">Enregistrer mes nouveaux accès</button>
@@ -1000,9 +1000,10 @@ function brancher(){
     if(!champ) return;
     const visible = champ.type === "text";
     champ.type = visible ? "password" : "text";
-    b.textContent = visible ? "Afficher" : "Masquer";
+    b.classList.toggle("est-visible", !visible);
     b.setAttribute("aria-pressed", String(!visible));
     b.setAttribute("aria-label", visible ? "Afficher le code" : "Masquer le code");
+    b.setAttribute("title", visible ? "Afficher le code" : "Masquer le code");
     champ.focus();
   }));
 
@@ -1377,10 +1378,13 @@ label{color:var(--anthracite);font-weight:600}
 input,select,textarea{padding:13px 14px;border-radius:11px;background:#fff;border-color:#dcd3c4}
 input:focus,select:focus{border-color:var(--rouge);box-shadow:0 0 0 4px rgba(217,22,47,.12)}
 .champ-code{position:relative}
-.champ-code input{padding-right:88px}
-.bascule-code{position:absolute;right:7px;top:50%;transform:translateY(-50%);padding:7px 9px;border-radius:8px;color:var(--rouge);background:#fff5d6;font-family:var(--display);font-size:11px;font-weight:700;letter-spacing:.7px;text-transform:uppercase}
-.bascule-code:hover{background:var(--jaune);color:var(--noir)}
+.champ-code input{padding-right:62px}
+.bascule-code{position:absolute;right:4px;top:50%;transform:translateY(-50%);z-index:3;width:44px;height:40px;padding:0;border:0;border-radius:8px;color:#777067;background:transparent;display:grid;place-items:center;box-shadow:none}
+.bascule-code:hover{background:transparent;color:var(--rouge)}
 .bascule-code:focus-visible{outline:3px solid rgba(217,22,47,.3);outline-offset:1px}
+.icone-oeil{position:relative;display:block;width:23px;height:15px;border:2px solid currentColor;border-radius:70% 15% 70% 15%;transform:rotate(45deg)}
+.icone-oeil::after{content:"";position:absolute;width:7px;height:7px;border-radius:50%;background:currentColor;left:50%;top:50%;transform:translate(-50%,-50%)}
+.bascule-code.est-visible::after{content:"";position:absolute;width:27px;height:2px;border-radius:2px;background:currentColor;transform:rotate(-45deg);box-shadow:0 0 0 2px #fff}
 .modale{border-radius:24px;background:#fffdf8;border:1px solid rgba(255,255,255,.5)}
 .modale-haut{padding:24px 26px;background:var(--noir);color:#fff;border:0}
 .modale-haut p{color:var(--jaune)}
