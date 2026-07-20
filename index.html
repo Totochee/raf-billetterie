@@ -27,25 +27,27 @@
    ========================================================================== */
 const CONFIG = {
 
-  /* --- Les 2 administrateurs ------------------------------------------- */
+  /* --- Les administrateurs --------------------------------------------- */
   admins: [
-    { email: "theobestion@gmail.com", nom: "Théo Bestion", code: "4827" },
-    { email: "admin2@mail.fr",        nom: "Admin Deux",   code: "2222" },
+    { utilisateur: "thomas",    nom: "Thomas",    code: "D2X5WG" },
+    { utilisateur: "sebastien", nom: "Sébastien", code: "KZBLCH" },
+    { utilisateur: "theo",      nom: "Théo",      code: "3PQUMB" },
   ],
 
-  /* --- Les 6 utilisateurs ---------------------------------------------- */
+  /* --- Les utilisateurs ------------------------------------------------- */
   utilisateurs: [
-    { email: "utilisateur1@mail.fr", nom: "Pierre Dupont",  code: "1234" },
-    { email: "utilisateur2@mail.fr", nom: "Jean Martin",    code: "1234" },
-    { email: "utilisateur3@mail.fr", nom: "Lucas Bernard",  code: "1234" },
-    { email: "utilisateur4@mail.fr", nom: "Marie Fabre",    code: "1234" },
-    { email: "utilisateur5@mail.fr", nom: "Sophie Cazals",  code: "1234" },
-    { email: "utilisateur6@mail.fr", nom: "Thomas Rieu",    code: "1234" },
+    { utilisateur: "sandrine", nom: "Sandrine", code: "BU9K4Q" },
+    { utilisateur: "romain",   nom: "Romain",   code: "JGCJD7" },
+    { utilisateur: "justin",   nom: "Justin",   code: "CG9F4V" },
+    { utilisateur: "mathieu",  nom: "Mathieu",  code: "5YEU6H" },
+    { utilisateur: "julien",   nom: "Julien",   code: "U97FS7" },
+    { utilisateur: "vincent",  nom: "Vincent",  code: "BEETBW" },
+    { utilisateur: "yannick",  nom: "Yannick",  code: "YA825Q" },
   ],
 
   /* --- Mode partagé (facultatif mais recommandé) ------------------------
      Vide  → mode LOCAL : chaque navigateur a ses propres données (démo/test).
-     Rempli → mode PARTAGÉ : les 8 comptes voient les mêmes réservations.
+     Rempli → mode PARTAGÉ : tous les comptes voient les mêmes réservations.
      Voir la marche à suivre (5 min, gratuit) tout en bas du fichier.        */
   supabaseUrl: "https://uekzzcsmhbcciiaepvit.supabase.co",
   supabaseKey: "sb_publishable_fygy5V1K32tMCShlWdhk5g_Td284QsX",
@@ -362,11 +364,11 @@ td.num{font-family:var(--data);font-weight:700}
     if(!Array.isArray(CONFIG.admins) || !Array.isArray(CONFIG.utilisateurs)) return "CONFIG.admins et CONFIG.utilisateurs doivent être des listes entre crochets [ ].";
     const tous = [...CONFIG.admins, ...CONFIG.utilisateurs];
     if(!tous.length) return "Aucun compte n'est déclaré dans CONFIG.";
-    const mauvais = tous.find(c => !c || !c.email || !String(c.email).includes("@") || !c.code);
-    if(mauvais) return "Un compte est incomplet : chaque ligne doit avoir email, nom et code. Vérifiez : " + JSON.stringify(mauvais);
-    const mails = tous.map(c => String(c.email).toLowerCase());
-    const doublon = mails.find((m,i) => mails.indexOf(m) !== i);
-    if(doublon) return "L'adresse " + doublon + " est déclarée deux fois. Chaque mail doit être unique.";
+    const mauvais = tous.find(c => !c || !c.utilisateur || !c.nom || !c.code);
+    if(mauvais) return "Un compte est incomplet : chaque ligne doit avoir utilisateur, nom et code. Vérifiez : " + JSON.stringify(mauvais);
+    const identifiants = tous.map(c => String(c.utilisateur).toLowerCase());
+    const doublon = identifiants.find((u,i) => identifiants.indexOf(u) !== i);
+    if(doublon) return "Le nom d'utilisateur " + doublon + " est déclaré deux fois. Chaque identifiant doit être unique.";
     return null;
   })();
 
@@ -381,11 +383,11 @@ td.num{font-family:var(--data);font-weight:700}
           <p style="font-size:14.5px;line-height:1.6;color:#2A2D33;margin:0 0 12px">Rouvrez <code>index.html</code> dans un éditeur de texte et vérifiez les trois erreurs classiques :</p>
           <ol style="font-size:14px;line-height:1.7;color:#2A2D33;padding-left:20px;margin:0 0 16px">
             <li>Une <strong>virgule manquante</strong> à la fin d'une ligne de compte.</li>
-            <li>Un <strong>guillemet non refermé</strong> autour d'un mail ou d'un nom.</li>
+            <li>Un <strong>guillemet non refermé</strong> autour d'un identifiant ou d'un nom.</li>
             <li>Des <strong>guillemets courbes</strong> (&#8220;&#8221;) au lieu des droits (&quot;&quot;) — typique d'un copier-coller depuis Word ou Notes.</li>
           </ol>
           <p style="font-size:13.5px;line-height:1.6;color:#6B7079;margin:0">Chaque ligne doit être exactement de cette forme, virgule finale comprise :</p>
-          <pre style="background:#F1F2F4;border:1px solid #E1E3E7;border-radius:6px;padding:11px 13px;font-size:12.5px;overflow:auto;margin:8px 0 0"><code>{ email: "pierre@mail.fr", nom: "Pierre Dupont", code: "1234" },</code></pre>
+          <pre style="background:#F1F2F4;border:1px solid #E1E3E7;border-radius:6px;padding:11px 13px;font-size:12.5px;overflow:auto;margin:8px 0 0"><code>{ utilisateur: "pierre", nom: "Pierre", code: "1234" },</code></pre>
           <p style="font-size:13px;color:#6B7079;margin:16px 0 0">Détail technique dans la console du navigateur (F12 → Console) : la ligne fautive y est indiquée par son numéro.</p>
         </div>
       </div>
@@ -503,13 +505,14 @@ const tousLesComptes = () => [
   ...CONFIG.admins.map(c=>({...c, role:"admin"})),
   ...CONFIG.utilisateurs.map(c=>({...c, role:"user"})),
 ];
-const compteDe = mail => tousLesComptes().find(c => c.email.toLowerCase() === String(mail).trim().toLowerCase());
+const compteDe = identifiant => tousLesComptes().find(c => c.utilisateur.toLowerCase() === String(identifiant).trim().toLowerCase());
 const estAdmin = () => session?.role === "admin";
+const identiteResa = r => r.utilisateur || r.email || "";
 
 const resaDuMatch  = id => etat.reservations.filter(r => r.matchId === id);
 const prises       = id => resaDuMatch(id).reduce((s,r)=>s+r.places, 0);
 const restantes    = m  => Math.max(0, m.places - prises(m.id));
-const maResa       = id => etat.reservations.find(r => r.matchId === id && r.email === session.email);
+const maResa       = id => etat.reservations.find(r => r.matchId === id && identiteResa(r) === session.utilisateur);
 
 function statut(m){
   const now = new Date();
@@ -587,15 +590,15 @@ function vueConnexion(){
       <form class="connexion-corps" id="f-connexion">
         ${ erreurConnexion ? `<div class="erreur">${echap(erreurConnexion)}</div>` : "" }
         <div>
-          <label for="i-mail">Adresse mail</label>
-          <input id="i-mail" type="email" autocomplete="username" placeholder="prenom@mail.fr" required>
+          <label for="i-utilisateur">Nom d'utilisateur</label>
+          <input id="i-utilisateur" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Votre identifiant" required>
         </div>
         <div>
           <label for="i-code">Code d'accès</label>
           <input id="i-code" type="password" inputmode="numeric" autocomplete="current-password" placeholder="••••" required>
         </div>
         <button class="btn btn-plein" type="submit">Entrer</button>
-        <p class="note">Plateforme privée : seules les 8 adresses inscrites dans la configuration peuvent se connecter.</p>
+        <p class="note">Plateforme privée : seuls les noms d'utilisateur inscrits dans la configuration peuvent se connecter.</p>
       </form>
     </div>
   </div>`;
@@ -701,7 +704,7 @@ function carteMatch(m, i){
     ${compteur(m)}
     <div class="reservataires">
       ${ resas.length
-          ? resas.map(r=>`<div class="ligne-r ${ r.email===session.email ? "moi" : "" }">
+          ? resas.map(r=>`<div class="ligne-r ${ identiteResa(r)===session.utilisateur ? "moi" : "" }">
                 <span class="nom">${echap(r.nom)}</span>
                 <span class="places">${r.places} ${motPlaces(r.places)}</span>
               </div>`).join("")
@@ -718,14 +721,14 @@ function bandeauMode(){
   </div>`;
   if(MODE_PARTAGE) return "";
   return `<div class="bandeau">
-    <b>Mode local.</b> Les réservations sont enregistrées dans ce navigateur uniquement : les 8 comptes ne voient pas encore les mêmes données.
+    <b>Mode local.</b> Les réservations sont enregistrées dans ce navigateur uniquement : les ${tousLesComptes().length} comptes ne voient pas encore les mêmes données.
     Pour activer le partage, renseignez <code>supabaseUrl</code> et <code>supabaseKey</code> dans le bloc CONFIG (marche à suivre en commentaire à la fin du fichier).
   </div>`;
 }
 
 /* --- Mes réservations -------------------------------------------------- */
 function vueMesResas(){
-  const miennes = etat.reservations.filter(r => r.email === session.email)
+  const miennes = etat.reservations.filter(r => identiteResa(r) === session.utilisateur)
     .map(r => ({ r, m: etat.matchs.find(m => m.id === r.matchId) }))
     .filter(x => x.m)
     .sort((a,b)=> a.m.date.localeCompare(b.m.date));
@@ -769,7 +772,7 @@ function vueAdmin(){
   const totalPlaces = liste.reduce((s,m)=>s+m.places,0);
   const totalPrises = etat.reservations.reduce((s,r)=>s+r.places,0);
   const taux = totalPlaces ? Math.round(totalPrises/totalPlaces*100) : 0;
-  const actifs = new Set(etat.reservations.map(r=>r.email)).size;
+  const actifs = new Set(etat.reservations.map(identiteResa)).size;
 
   return `
     ${bandeauMode()}
@@ -819,7 +822,7 @@ function vueAdmin(){
           <thead><tr><th>${echap(m.domicile)} — ${echap(m.adverse)} · ${dateLongue(m.date)}</th><th>Places</th><th>Modifié le</th><th></th></tr></thead>
           <tbody>
             ${ resaDuMatch(m.id).map(r=>`<tr>
-                <td>${echap(r.nom)}<br><span class="note">${echap(r.email)}</span></td>
+                <td>${echap(r.nom)}<br><span class="note">@${echap(identiteResa(r))}</span></td>
                 <td class="num">${r.places}</td>
                 <td class="note">${dateHeureCourte(r.majLe || r.creeLe)}</td>
                 <td><button class="btn btn-fantome btn-petit" data-suppr-resa="${r.id}">Retirer</button></td>
@@ -915,14 +918,14 @@ function brancher(){
   /* connexion */
   $("#f-connexion")?.addEventListener("submit", e => {
     e.preventDefault();
-    const mail = $("#i-mail").value, code = $("#i-code").value;
-    const c = compteDe(mail);
+    const identifiant = $("#i-utilisateur").value, code = $("#i-code").value;
+    const c = compteDe(identifiant);
     if(!c || String(c.code) !== String(code).trim()){
-      erreurConnexion = "Adresse mail ou code d'accès incorrect. Cette plateforme est réservée aux 8 comptes autorisés.";
+      erreurConnexion = "Nom d'utilisateur ou code d'accès incorrect. Cette plateforme est réservée aux comptes autorisés.";
       return rendre();
     }
     erreurConnexion = "";
-    session = { email:c.email, nom:c.nom, role:c.role };
+    session = { utilisateur:c.utilisateur, nom:c.nom, role:c.role };
     stock.ecrire(CLE_SESSION, JSON.stringify(session));
     vue = "matchs";
     toast(`Bienvenue ${c.nom}`, "ok");
@@ -1005,7 +1008,7 @@ async function confirmerReservation(){
   } else {
     etat.reservations.push({
       id:"r"+Date.now()+Math.random().toString(36).slice(2,6),
-      matchId:m.id, email:session.email, nom:session.nom,
+      matchId:m.id, utilisateur:session.utilisateur, nom:session.nom,
       places:n, creeLe:new Date().toISOString(),
     });
     toast(`${n} ${motPlaces(n)} réservée${n>1?"s":""} pour ${m.domicile} — ${m.adverse}`, "ok");
@@ -1017,7 +1020,7 @@ async function confirmerReservation(){
 async function annuler(matchId){
   const m = etat.matchs.find(x=>x.id===matchId);
   if(!confirm(`Annuler votre réservation pour ${m.domicile} — ${m.adverse} ?`)) return;
-  etat.reservations = etat.reservations.filter(r => !(r.matchId===matchId && r.email===session.email));
+  etat.reservations = etat.reservations.filter(r => !(r.matchId===matchId && identiteResa(r)===session.utilisateur));
   await enregistrerEtat();
   toast("Réservation annulée","ok"); rendre();
 }
@@ -1052,14 +1055,14 @@ async function sauverMatch(){
 }
 
 function exporterCsv(){
-  const l = [["Match","Date","Heure","Lieu","Nom","Email","Places","Total match","Places totales","Restantes","Statut"]];
+  const l = [["Match","Date","Heure","Lieu","Nom","Nom d'utilisateur","Places","Total match","Places totales","Restantes","Statut"]];
   matchsTries().forEach(m => {
     const rs = resaDuMatch(m.id), st = statut(m).mot;
     const base = [`${m.domicile} - ${m.adverse}`, m.date, m.heure, m.lieu||""];
     if(!rs.length){
       l.push([...base, "(aucune réservation)","","", prises(m.id), m.places, restantes(m), st]);
     } else {
-      rs.forEach(r => l.push([...base, r.nom, r.email, r.places, prises(m.id), m.places, restantes(m), st]));
+      rs.forEach(r => l.push([...base, r.nom, identiteResa(r), r.places, prises(m.id), m.places, restantes(m), st]));
     }
   });
   const csv = "\uFEFF" + l.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(";")).join("\r\n");
@@ -1075,7 +1078,7 @@ function exporterCsv(){
    ========================================================================== */
 (async function demarrer(){
   const s = stock.lire(CLE_SESSION);
-  if(s){ try{ const p = JSON.parse(s); if(compteDe(p.email)) session = p; }catch(e){} }
+  if(s){ try{ const p = JSON.parse(s); if(p.utilisateur && compteDe(p.utilisateur)) session = p; }catch(e){} }
   etat = await chargerEtat();
   rendre();
 
@@ -1245,9 +1248,9 @@ th{color:var(--jaune)}
         https://VOTRE-PSEUDO.github.io/tribune-raf/
      Pour modifier la config ensuite : cliquez sur index.html → l'icône crayon → Commit.
 
-     B. VOS 8 COMPTES
+     B. VOS COMPTES
      ----------------
-     Modifiez le bloc CONFIG en haut du fichier : les mails, les noms et les codes
+     Modifiez le bloc CONFIG en haut du fichier : les identifiants, les noms et les codes
      d'accès à 4 chiffres. Donnez son code à chaque personne.
 
      Sur la sécurité, honnêtement : un site statique n'a pas de serveur, donc les
@@ -1279,7 +1282,7 @@ th{color:var(--jaune)}
 
      4. Settings → API → copiez "Project URL" et la clé "anon public".
      5. Collez-les dans CONFIG.supabaseUrl et CONFIG.supabaseKey en haut du fichier.
-     6. Commit sur GitHub. Terminé : les 8 comptes partagent les mêmes données,
+     6. Commit sur GitHub. Terminé : tous les comptes partagent les mêmes données,
         rafraîchies toutes les 8 secondes.
 
      Note : la clé "anon" est faite pour être publique, mais avec ces règles RLS
@@ -1288,7 +1291,7 @@ th{color:var(--jaune)}
 
      D. CE QUE FAIT L'APPLI
      ----------------------
-     · Connexion réservée aux 8 mails de CONFIG, session conservée.
+     · Connexion réservée aux noms d'utilisateur de CONFIG, session conservée.
      · Matchs groupés par mois, statut calculé en direct :
        À venir (avant l'ouverture) → Ouvert → Fermé (après la fermeture ou
        fermeture manuelle admin) → Complet (0 place restante).
