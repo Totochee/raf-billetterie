@@ -29,21 +29,24 @@ const CONFIG = {
 
   /* --- Les administrateurs --------------------------------------------- */
   admins: [
-    { utilisateur: "thomas",    nom: "Thomas",    code: "D2X5WG" },
-    { utilisateur: "sebastien", nom: "Sébastien", code: "KZBLCH" },
-    { utilisateur: "theo",      nom: "Théo",      code: "3PQUMB" },
+    { id: "thomas",    utilisateur: "thomas",    nom: "Thomas",    code: "D2X5WG" },
+    { id: "sebastien", utilisateur: "sebastien", nom: "Sébastien", code: "KZBLCH" },
+    { id: "theo",      utilisateur: "theo",      nom: "Théo",      code: "3PQUMB" },
   ],
 
   /* --- Les utilisateurs ------------------------------------------------- */
   utilisateurs: [
-    { utilisateur: "sandrine", nom: "Sandrine", code: "BU9K4Q" },
-    { utilisateur: "romain",   nom: "Romain",   code: "JGCJD7" },
-    { utilisateur: "justin",   nom: "Justin",   code: "CG9F4V" },
-    { utilisateur: "mathieu",  nom: "Mathieu",  code: "5YEU6H" },
-    { utilisateur: "julien",   nom: "Julien",   code: "U97FS7" },
-    { utilisateur: "vincent",  nom: "Vincent",  code: "BEETBW" },
-    { utilisateur: "yannick",  nom: "Yannick",  code: "YA825Q" },
+    { id: "sandrine", utilisateur: "sandrine", nom: "Sandrine", code: "BU9K4Q" },
+    { id: "romain",   utilisateur: "romain",   nom: "Romain",   code: "JGCJD7" },
+    { id: "justin",   utilisateur: "justin",   nom: "Justin",   code: "CG9F4V" },
+    { id: "mathieu",  utilisateur: "mathieu",  nom: "Mathieu",  code: "5YEU6H" },
+    { id: "julien",   utilisateur: "julien",   nom: "Julien",   code: "U97FS7" },
+    { id: "vincent",  utilisateur: "vincent",  nom: "Vincent",  code: "BEETBW" },
+    { id: "yannick",  utilisateur: "yannick",  nom: "Yannick",  code: "YA825Q" },
   ],
+
+  /* Compte propriétaire permanent : il ne peut pas être modifié dans le site. */
+  proprietaire: "theo",
 
   /* --- Mode partagé (facultatif mais recommandé) ------------------------
      Vide  → mode LOCAL : chaque navigateur a ses propres données (démo/test).
@@ -399,7 +402,7 @@ const MODE_PARTAGE = !!(CONFIG.supabaseUrl && CONFIG.supabaseKey);
 const CLE = "raf_2627_state";
 const CLE_SESSION = "raf_2627_session";
 
-let etat = { matchs: [], reservations: [] };
+let etat = { matchs: [], reservations: [], comptes: {} };
 let session = null;
 let vue = "matchs";
 let modale = null;
@@ -458,11 +461,17 @@ function estInitialise(d){
 
 // Met à jour un état existant si le fichier apporte un calendrier plus récent.
 async function migrer(d){
-  if(d.version === CALENDRIER_VERSION) return d;
+  if(d.version === CALENDRIER_VERSION){
+    if(!d.comptes || typeof d.comptes !== "object" || Array.isArray(d.comptes)){
+      d.comptes = {};
+      await enregistrerEtat(d);
+    }
+    return d;
+  }
   const neuf = etatInitial();
   const garde = d.reservations.filter(r => neuf.matchs.some(m => m.id === r.matchId));
   const perdues = d.reservations.length - garde.length;
-  const migre = { ...neuf, reservations: garde };
+  const migre = { ...neuf, reservations: garde, comptes:d.comptes || {} };
   await enregistrerEtat(migre);
   console.info("[Tribune RAF] Calendrier mis à jour → " + CALENDRIER_VERSION +
     (perdues ? " (" + perdues + " réservation(s) sur des matchs disparus ont été écartées)" : ""));
@@ -495,18 +504,24 @@ function etatInitial(){
     version: CALENDRIER_VERSION,
     matchs: MATCHS_INITIAUX.map((m,i)=>({ id:"m"+(i+1), ferme:false, ...m })),
     reservations: [],
+    comptes: {},
   };
 }
 
 /* ==========================================================================
    4. RÈGLES MÉTIER
    ========================================================================== */
+const compteAvecProfil = (c, role) => {
+  const modif = c.id === CONFIG.proprietaire ? null : etat.comptes?.[c.id];
+  return { ...c, ...(modif || {}), role, proprietaire:c.id === CONFIG.proprietaire };
+};
 const tousLesComptes = () => [
-  ...CONFIG.admins.map(c=>({...c, role:"admin"})),
-  ...CONFIG.utilisateurs.map(c=>({...c, role:"user"})),
+  ...CONFIG.admins.map(c=>compteAvecProfil(c,"admin")),
+  ...CONFIG.utilisateurs.map(c=>compteAvecProfil(c,"user")),
 ];
 const compteDe = identifiant => tousLesComptes().find(c => c.utilisateur.toLowerCase() === String(identifiant).trim().toLowerCase());
 const estAdmin = () => session?.role === "admin";
+const estProprietaire = () => session?.compteId === CONFIG.proprietaire;
 const identiteResa = r => r.utilisateur || r.email || "";
 
 const resaDuMatch  = id => etat.reservations.filter(r => r.matchId === id);
@@ -569,7 +584,7 @@ function rendre(){
   app.innerHTML = `
     <div class="rayures"></div>
     ${entete()}
-    <main class="page">${ vue==="admin" && estAdmin() ? vueAdmin() : vue==="mesresas" ? vueMesResas() : vueMatchs() }</main>
+    <main class="page">${ vue==="admin" && estAdmin() ? vueAdmin() : vue==="compte" ? vueCompte() : vue==="mesresas" ? vueMesResas() : vueMatchs() }</main>
     ${ modale ? vueModale() : "" }
   `;
   brancher();
@@ -617,11 +632,12 @@ function entete(){
       <nav class="onglets">
         ${onglet("matchs","Matchs")}
         ${onglet("mesresas","Mes réservations")}
+        ${onglet("compte","Mon compte")}
         ${ estAdmin() ? onglet("admin","Tableau de bord") : "" }
       </nav>
       <div class="qui">
         <em>${echap(session.nom)}</em>
-        ${ estAdmin() ? '<span class="badge-admin">Admin</span>' : "" }
+        ${ estProprietaire() ? '<span class="badge-admin">Propriétaire</span>' : estAdmin() ? '<span class="badge-admin">Admin</span>' : "" }
         <button class="lien-quitter" id="b-quitter">Se déconnecter</button>
       </div>
     </div>
@@ -764,6 +780,40 @@ function vueMesResas(){
     </div>
     ${ avenir.length ? `<h2 class="titre-section">À venir</h2>${tableau(avenir, true)}` : "" }
     ${ passees.length ? `<h2 class="titre-section">Historique</h2>${tableau(passees, false)}` : "" }`;
+}
+
+/* --- Mon compte -------------------------------------------------------- */
+function vueCompte(){
+  const c = tousLesComptes().find(x => x.id === session.compteId) || compteDe(session.utilisateur);
+  if(!c) return `<div class="rien"><h3>Compte introuvable</h3><p>Déconnectez-vous puis reconnectez-vous.</p></div>`;
+
+  if(estProprietaire()) return `
+    <section class="compte-carte compte-proprietaire">
+      <span class="hero-surtitre">Compte propriétaire</span>
+      <h1>Accès permanent</h1>
+      <p>Votre compte <strong>${echap(c.nom)}</strong> ne peut pas être modifié depuis le site. Vous conservez ainsi toujours un accès administrateur, même si les autres membres changent leurs identifiants.</p>
+      <div class="identifiant-actuel"><span>Nom d'utilisateur</span><strong>${echap(c.utilisateur)}</strong></div>
+    </section>`;
+
+  return `
+    <section class="compte-carte">
+      <span class="hero-surtitre">Profil de ${echap(c.nom)}</span>
+      <h1>Modifier mes accès</h1>
+      <p>Choisissez votre propre nom d'utilisateur et, si vous le souhaitez, un nouveau code d'accès.</p>
+      <form id="f-compte" class="form-compte">
+        <div>
+          <label for="c-utilisateur">Nom d'utilisateur</label>
+          <input id="c-utilisateur" value="${echap(c.utilisateur)}" minlength="3" maxlength="24" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+          <p class="note">3 à 24 caractères : lettres, chiffres, point, tiret ou tiret bas.</p>
+        </div>
+        <div class="form-grille">
+          <div><label for="c-code">Nouveau code</label><input id="c-code" type="password" minlength="4" maxlength="20" autocomplete="new-password" placeholder="Laisser vide pour conserver l'actuel"></div>
+          <div><label for="c-code2">Confirmer le code</label><input id="c-code2" type="password" minlength="4" maxlength="20" autocomplete="new-password" placeholder="Répétez le nouveau code"></div>
+        </div>
+        <div id="c-erreur" class="erreur" hidden></div>
+        <button class="btn btn-plein" type="submit">Enregistrer mes nouveaux accès</button>
+      </form>
+    </section>`;
 }
 
 /* --- Tableau de bord admin --------------------------------------------- */
@@ -925,7 +975,7 @@ function brancher(){
       return rendre();
     }
     erreurConnexion = "";
-    session = { utilisateur:c.utilisateur, nom:c.nom, role:c.role };
+    session = { compteId:c.id, utilisateur:c.utilisateur, nom:c.nom, role:c.role };
     stock.ecrire(CLE_SESSION, JSON.stringify(session));
     vue = "matchs";
     toast(`Bienvenue ${c.nom}`, "ok");
@@ -937,6 +987,9 @@ function brancher(){
   });
 
   $$("[data-vue]").forEach(b => b.addEventListener("click", ()=>{ vue = b.dataset.vue; modale = null; rendre(); }));
+
+  /* modification des accès personnels */
+  $("#f-compte")?.addEventListener("submit", sauverCompte);
 
   /* réserver / annuler */
   $$("[data-reserver]").forEach(b => b.addEventListener("click", ()=>{
@@ -993,6 +1046,39 @@ function brancher(){
 document.addEventListener("keydown", e => { if(e.key === "Escape" && modale){ modale = null; rendre(); } });
 
 /* --- Actions ----------------------------------------------------------- */
+async function sauverCompte(e){
+  e.preventDefault();
+  if(estProprietaire()) return;
+
+  const compte = tousLesComptes().find(c => c.id === session.compteId);
+  const ancienIdentifiant = session.utilisateur;
+  const utilisateur = document.getElementById("c-utilisateur").value.trim().toLowerCase();
+  const code = document.getElementById("c-code").value.trim();
+  const confirmation = document.getElementById("c-code2").value.trim();
+  const erreur = document.getElementById("c-erreur");
+  const refuser = message => { erreur.textContent = message; erreur.hidden = false; };
+
+  if(!/^[a-z0-9._-]{3,24}$/.test(utilisateur)){
+    return refuser("Le nom d'utilisateur doit contenir 3 à 24 lettres, chiffres, points, tirets ou tirets bas.");
+  }
+  const doublon = tousLesComptes().find(c => c.id !== session.compteId && c.utilisateur.toLowerCase() === utilisateur);
+  if(doublon) return refuser("Ce nom d'utilisateur est déjà utilisé. Choisissez-en un autre.");
+  if(code && (code.length < 4 || code.length > 20)) return refuser("Le nouveau code doit contenir entre 4 et 20 caractères.");
+  if(code !== confirmation) return refuser("Les deux nouveaux codes ne correspondent pas.");
+
+  etat.comptes ||= {};
+  etat.comptes[session.compteId] = { utilisateur, code: code || compte.code };
+  etat.reservations.forEach(r => {
+    if(identiteResa(r) === ancienIdentifiant){ r.utilisateur = utilisateur; delete r.email; }
+  });
+  await enregistrerEtat();
+
+  session = { ...session, utilisateur };
+  stock.ecrire(CLE_SESSION, JSON.stringify(session));
+  toast("Vos accès ont été modifiés", "ok");
+  rendre();
+}
+
 async function confirmerReservation(){
   const m = etat.matchs.find(x=>x.id===modale.matchId);
   const mienne = maResa(m.id);
@@ -1078,8 +1164,14 @@ function exporterCsv(){
    ========================================================================== */
 (async function demarrer(){
   const s = stock.lire(CLE_SESSION);
-  if(s){ try{ const p = JSON.parse(s); if(p.utilisateur && compteDe(p.utilisateur)) session = p; }catch(e){} }
   etat = await chargerEtat();
+  if(s){
+    try{
+      const p = JSON.parse(s);
+      const c = p.compteId ? tousLesComptes().find(x=>x.id===p.compteId) : compteDe(p.utilisateur);
+      if(c) session = { compteId:c.id, utilisateur:c.utilisateur, nom:c.nom, role:c.role };
+    }catch(e){}
+  }
   rendre();
 
   // rafraîchissement du statut (À venir → Ouvert → Fermé) et des places
@@ -1087,7 +1179,12 @@ function exporterCsv(){
     if(!session || modale) return;
     if(MODE_PARTAGE){
       const frais = await chargerEtat();
-      if(JSON.stringify(frais) !== JSON.stringify(etat)){ etat = frais; rendre(); return; }
+      if(JSON.stringify(frais) !== JSON.stringify(etat)){
+        etat = frais;
+        const c = tousLesComptes().find(x=>x.id===session.compteId);
+        if(c){ session = { compteId:c.id, utilisateur:c.utilisateur, nom:c.nom, role:c.role }; stock.ecrire(CLE_SESSION,JSON.stringify(session)); }
+        rendre(); return;
+      }
     }
     rendre();
   }, CONFIG.rafraichissementSecondes * 1000);
@@ -1223,6 +1320,15 @@ input:focus,select:focus{border-color:var(--rouge);box-shadow:0 0 0 4px rgba(217
 thead{background:var(--noir);color:#fff}
 th{color:var(--jaune)}
 .toast{border-radius:14px;box-shadow:0 20px 45px -20px rgba(0,0,0,.5)}
+.compte-carte{max-width:720px;margin:20px auto;background:#fffdf8;border:1px solid rgba(151,132,99,.22);border-radius:26px;padding:38px;box-shadow:var(--ombre)}
+.compte-carte h1{font-family:var(--display);font-size:38px;line-height:1;text-transform:uppercase;margin:8px 0 14px}
+.compte-carte>p{color:var(--gris);font-size:16px;max-width:610px;margin-bottom:28px}
+.form-compte{display:grid;gap:20px}
+.form-compte>.btn{justify-self:start}
+.identifiant-actuel{display:flex;align-items:center;justify-content:space-between;gap:18px;padding:18px 20px;border-radius:15px;background:#f6f2e9}
+.identifiant-actuel span{font-family:var(--display);font-size:12px;letter-spacing:1.4px;text-transform:uppercase;color:var(--gris)}
+.identifiant-actuel strong{font-family:var(--data);font-size:18px;color:var(--rouge)}
+.compte-proprietaire{border-top:8px solid var(--jaune);background:linear-gradient(145deg,#fffdf8,#fff8d2)}
 @media(max-width:820px){
   .entete-in{padding:10px 16px}.onglets{order:3;width:100%;overflow:auto}.onglets button{flex:1;white-space:nowrap}
   .qui em{display:none}.page{padding:22px 16px 70px}.hero-raf{padding:34px 28px;min-height:290px}.hero-score{width:135px}.hero-score strong{font-size:40px}
@@ -1231,6 +1337,7 @@ th{color:var(--jaune)}
   .logo span,.badge-admin{display:none}.lien-quitter{font-size:0}.lien-quitter::after{content:"Quitter";font-size:12px}
   .hero-raf{padding:30px 24px 34px;display:block;min-height:320px}.hero-raf h1{font-size:40px}.hero-raf p{font-size:15px;padding-right:56px}.hero-score{position:absolute;right:-22px;bottom:-20px;width:125px}
   .grille{grid-template-columns:1fr}.match{border-radius:18px}.connexion{padding:18px}.connexion-boite{max-width:420px}.connexion-corps{padding:26px 22px}.connexion-haut{padding:28px 22px 24px}
+  .compte-carte{padding:26px 20px;border-radius:20px}.compte-carte h1{font-size:32px}.identifiant-actuel{align-items:flex-start;flex-direction:column}
 }
 @media(prefers-reduced-motion:reduce){.match,.btn{transition:none}.match:hover{transform:none}}
 </style>
