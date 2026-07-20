@@ -610,7 +610,7 @@ function vueConnexion(){
         </div>
         <div>
           <label for="i-code">Code d'accès</label>
-          <input id="i-code" type="password" inputmode="numeric" autocomplete="current-password" placeholder="••••" required>
+          <input id="i-code" type="password" inputmode="text" autocomplete="current-password" autocapitalize="none" spellcheck="false" placeholder="Votre code" required>
         </div>
         <button class="btn btn-plein" type="submit">Entrer</button>
         <p class="note">Plateforme privée : seuls les noms d'utilisateur inscrits dans la configuration peuvent se connecter.</p>
@@ -808,8 +808,8 @@ function vueCompte(){
           <p class="note">3 à 24 caractères : lettres, chiffres, point, tiret ou tiret bas.</p>
         </div>
         <div class="form-grille">
-          <div><label for="c-code">Nouveau code</label><input id="c-code" type="password" minlength="4" maxlength="20" autocomplete="new-password" placeholder="Laisser vide pour conserver l'actuel"></div>
-          <div><label for="c-code2">Confirmer le code</label><input id="c-code2" type="password" minlength="4" maxlength="20" autocomplete="new-password" placeholder="Répétez le nouveau code"></div>
+          <div><label for="c-code">Nouveau code</label><input id="c-code" type="password" inputmode="text" minlength="4" maxlength="20" autocomplete="new-password" autocapitalize="none" spellcheck="false" placeholder="Laisser vide pour conserver l'actuel"></div>
+          <div><label for="c-code2">Confirmer le code</label><input id="c-code2" type="password" inputmode="text" minlength="4" maxlength="20" autocomplete="new-password" autocapitalize="none" spellcheck="false" placeholder="Répétez le nouveau code"></div>
         </div>
         <div id="c-erreur" class="erreur" hidden></div>
         <button class="btn btn-plein" type="submit">Enregistrer mes nouveaux accès</button>
