@@ -31,7 +31,7 @@ const CONFIG = {
   admins: [
     { id: "thomas",    utilisateur: "thomas",    nom: "Thomas" },
     { id: "sebastien", utilisateur: "sebastien", nom: "Sébastien" },
-    { id: "theo",      utilisateur: "theo",      nom: "Théo" },
+    { id: "theo",      utilisateur: "theo",      nom: "Théo", firebaseEmail: "theobestion@gmail.com" },
   ],
 
   /* --- Les utilisateurs ------------------------------------------------- */
@@ -80,7 +80,10 @@ const firebasePret = Promise.all([
   const firebaseApp = appSdk.initializeApp(CONFIG.firebase);
   return { auth:authSdk.getAuth(firebaseApp), sdk:authSdk };
 });
-const emailFirebase = id => `${id}@${CONFIG.firebaseEmailDomain}`;
+const emailFirebase = id => {
+  const compte = [...CONFIG.admins,...CONFIG.utilisateurs].find(c => c.id === id);
+  return compte?.firebaseEmail || `${id}@${CONFIG.firebaseEmailDomain}`;
+};
 
 /* --- Calendrier officiel 2026-2027 : les 17 matchs à domicile ------------
    Importés depuis le fichier Rodez.ics (FotMob), heures converties en heure
