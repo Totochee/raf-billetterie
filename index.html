@@ -29,24 +29,35 @@ const CONFIG = {
 
   /* --- Les administrateurs --------------------------------------------- */
   admins: [
-    { id: "thomas",    utilisateur: "thomas",    nom: "Thomas",    code: "D2X5WG" },
-    { id: "sebastien", utilisateur: "sebastien", nom: "Sébastien", code: "KZBLCH" },
-    { id: "theo",      utilisateur: "theo",      nom: "Théo",      code: "3PQUMB" },
+    { id: "thomas",    utilisateur: "thomas",    nom: "Thomas" },
+    { id: "sebastien", utilisateur: "sebastien", nom: "Sébastien" },
+    { id: "theo",      utilisateur: "theo",      nom: "Théo" },
   ],
 
   /* --- Les utilisateurs ------------------------------------------------- */
   utilisateurs: [
-    { id: "sandrine", utilisateur: "sandrine", nom: "Sandrine", code: "BU9K4Q" },
-    { id: "romain",   utilisateur: "romain",   nom: "Romain",   code: "JGCJD7" },
-    { id: "justin",   utilisateur: "justin",   nom: "Justin",   code: "CG9F4V" },
-    { id: "mathieu",  utilisateur: "mathieu",  nom: "Mathieu",  code: "5YEU6H" },
-    { id: "julien",   utilisateur: "julien",   nom: "Julien",   code: "U97FS7" },
-    { id: "vincent",  utilisateur: "vincent",  nom: "Vincent",  code: "BEETBW" },
-    { id: "yannick",  utilisateur: "yannick",  nom: "Yannick",  code: "YA825Q" },
+    { id: "sandrine", utilisateur: "sandrine", nom: "Sandrine" },
+    { id: "romain",   utilisateur: "romain",   nom: "Romain" },
+    { id: "justin",   utilisateur: "justin",   nom: "Justin" },
+    { id: "mathieu",  utilisateur: "mathieu",  nom: "Mathieu" },
+    { id: "julien",   utilisateur: "julien",   nom: "Julien" },
+    { id: "vincent",  utilisateur: "vincent",  nom: "Vincent" },
+    { id: "yannick",  utilisateur: "yannick",  nom: "Yannick" },
   ],
 
   /* Compte propriétaire permanent : il ne peut pas être modifié dans le site. */
   proprietaire: "theo",
+
+  /* --- Authentification Firebase : aucun mot de passe dans ce fichier --- */
+  firebase: {
+    apiKey: "AIzaSyCrNry-jCRHz1nxYkk82oCclfHWBhDquh0",
+    authDomain: "tbsn-facturation.firebaseapp.com",
+    projectId: "tbsn-facturation",
+    storageBucket: "tbsn-facturation.firebasestorage.app",
+    messagingSenderId: "880155707782",
+    appId: "1:880155707782:web:d2808553ca8445cab38407",
+  },
+  firebaseEmailDomain: "tbsn-facturation.firebaseapp.com",
 
   /* --- Mode partagé (facultatif mais recommandé) ------------------------
      Vide  → mode LOCAL : chaque navigateur a ses propres données (démo/test).
@@ -60,6 +71,16 @@ const CONFIG = {
   rafraichissementSecondes: 8,   // fréquence de synchro en mode partagé
   seuilAlerte: 2,                // "il ne reste que X places" → alerte rouge
 };
+
+/* Firebase Auth est chargé à la demande. Les mots de passe restent chez Firebase. */
+const firebasePret = Promise.all([
+  import("https://www.gstatic.com/firebasejs/12.16.0/firebase-app.js"),
+  import("https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js"),
+]).then(([appSdk, authSdk]) => {
+  const firebaseApp = appSdk.initializeApp(CONFIG.firebase);
+  return { auth:authSdk.getAuth(firebaseApp), sdk:authSdk };
+});
+const emailFirebase = id => `${id}@${CONFIG.firebaseEmailDomain}`;
 
 /* --- Calendrier officiel 2026-2027 : les 17 matchs à domicile ------------
    Importés depuis le fichier Rodez.ics (FotMob), heures converties en heure
@@ -367,8 +388,8 @@ td.num{font-family:var(--data);font-weight:700}
     if(!Array.isArray(CONFIG.admins) || !Array.isArray(CONFIG.utilisateurs)) return "CONFIG.admins et CONFIG.utilisateurs doivent être des listes entre crochets [ ].";
     const tous = [...CONFIG.admins, ...CONFIG.utilisateurs];
     if(!tous.length) return "Aucun compte n'est déclaré dans CONFIG.";
-    const mauvais = tous.find(c => !c || !c.utilisateur || !c.nom || !c.code);
-    if(mauvais) return "Un compte est incomplet : chaque ligne doit avoir utilisateur, nom et code. Vérifiez : " + JSON.stringify(mauvais);
+    const mauvais = tous.find(c => !c || !c.id || !c.utilisateur || !c.nom);
+    if(mauvais) return "Un compte est incomplet : chaque ligne doit avoir id, utilisateur et nom. Vérifiez : " + JSON.stringify(mauvais);
     const identifiants = tous.map(c => String(c.utilisateur).toLowerCase());
     const doublon = identifiants.find((u,i) => identifiants.indexOf(u) !== i);
     if(doublon) return "Le nom d'utilisateur " + doublon + " est déclaré deux fois. Chaque identifiant doit être unique.";
@@ -390,7 +411,7 @@ td.num{font-family:var(--data);font-weight:700}
             <li>Des <strong>guillemets courbes</strong> (&#8220;&#8221;) au lieu des droits (&quot;&quot;) — typique d'un copier-coller depuis Word ou Notes.</li>
           </ol>
           <p style="font-size:13.5px;line-height:1.6;color:#6B7079;margin:0">Chaque ligne doit être exactement de cette forme, virgule finale comprise :</p>
-          <pre style="background:#F1F2F4;border:1px solid #E1E3E7;border-radius:6px;padding:11px 13px;font-size:12.5px;overflow:auto;margin:8px 0 0"><code>{ utilisateur: "pierre", nom: "Pierre", code: "1234" },</code></pre>
+          <pre style="background:#F1F2F4;border:1px solid #E1E3E7;border-radius:6px;padding:11px 13px;font-size:12.5px;overflow:auto;margin:8px 0 0"><code>{ id: "pierre", utilisateur: "pierre", nom: "Pierre" },</code></pre>
           <p style="font-size:13px;color:#6B7079;margin:16px 0 0">Détail technique dans la console du navigateur (F12 → Console) : la ligne fautive y est indiquée par son numéro.</p>
         </div>
       </div>
@@ -400,7 +421,6 @@ td.num{font-family:var(--data);font-weight:700}
 
 const MODE_PARTAGE = !!(CONFIG.supabaseUrl && CONFIG.supabaseKey);
 const CLE = "raf_2627_state";
-const CLE_SESSION = "raf_2627_session";
 
 let etat = { matchs: [], reservations: [], comptes: {} };
 let session = null;
@@ -461,11 +481,19 @@ function estInitialise(d){
 
 // Met à jour un état existant si le fichier apporte un calendrier plus récent.
 async function migrer(d){
-  if(d.version === CALENDRIER_VERSION){
-    if(!d.comptes || typeof d.comptes !== "object" || Array.isArray(d.comptes)){
-      d.comptes = {};
-      await enregistrerEtat(d);
+  let securise = false;
+  if(!d.comptes || typeof d.comptes !== "object" || Array.isArray(d.comptes)){
+    d.comptes = {};
+    securise = true;
+  }
+  Object.values(d.comptes).forEach(profil => {
+    if(profil && Object.prototype.hasOwnProperty.call(profil,"code")){
+      delete profil.code;
+      securise = true;
     }
+  });
+  if(d.version === CALENDRIER_VERSION){
+    if(securise) await enregistrerEtat(d);
     return d;
   }
   const neuf = etatInitial();
@@ -513,7 +541,8 @@ function etatInitial(){
    ========================================================================== */
 const compteAvecProfil = (c, role) => {
   const modif = c.id === CONFIG.proprietaire ? null : etat.comptes?.[c.id];
-  return { ...c, ...(modif || {}), role, proprietaire:c.id === CONFIG.proprietaire };
+  const profil = modif?.utilisateur ? { utilisateur:modif.utilisateur } : {};
+  return { ...c, ...profil, role, proprietaire:c.id === CONFIG.proprietaire };
 };
 const tousLesComptes = () => [
   ...CONFIG.admins.map(c=>compteAvecProfil(c,"admin")),
@@ -609,14 +638,14 @@ function vueConnexion(){
           <input id="i-utilisateur" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Votre identifiant" required>
         </div>
         <div>
-          <label for="i-code">Code d'accès</label>
+          <label for="i-code">Mot de passe</label>
           <div class="champ-code">
-            <input id="i-code" type="password" inputmode="text" autocomplete="current-password" autocapitalize="none" spellcheck="false" placeholder="Votre code" required>
-            <button type="button" class="bascule-code" data-toggle-code="i-code" aria-label="Afficher le code" aria-pressed="false" title="Afficher le code"><span class="icone-oeil" aria-hidden="true"></span></button>
+            <input id="i-code" type="password" inputmode="text" autocomplete="current-password" autocapitalize="none" spellcheck="false" placeholder="Votre mot de passe" required>
+            <button type="button" class="bascule-code" data-toggle-code="i-code" aria-label="Afficher le mot de passe" aria-pressed="false" title="Afficher le mot de passe"><span class="icone-oeil" aria-hidden="true"></span></button>
           </div>
         </div>
         <button class="btn btn-plein" type="submit">Entrer</button>
-        <p class="note">Plateforme privée : seuls les noms d'utilisateur inscrits dans la configuration peuvent se connecter.</p>
+        <p class="note">Connexion sécurisée par Firebase Authentication.</p>
       </form>
     </div>
   </div>`;
@@ -791,28 +820,21 @@ function vueCompte(){
   const c = tousLesComptes().find(x => x.id === session.compteId) || compteDe(session.utilisateur);
   if(!c) return `<div class="rien"><h3>Compte introuvable</h3><p>Déconnectez-vous puis reconnectez-vous.</p></div>`;
 
-  if(estProprietaire()) return `
-    <section class="compte-carte compte-proprietaire">
-      <span class="hero-surtitre">Compte propriétaire</span>
-      <h1>Accès permanent</h1>
-      <p>Votre compte <strong>${echap(c.nom)}</strong> ne peut pas être modifié depuis le site. Vous conservez ainsi toujours un accès administrateur, même si les autres membres changent leurs identifiants.</p>
-      <div class="identifiant-actuel"><span>Nom d'utilisateur</span><strong>${echap(c.utilisateur)}</strong></div>
-    </section>`;
-
   return `
-    <section class="compte-carte">
-      <span class="hero-surtitre">Profil de ${echap(c.nom)}</span>
+    <section class="compte-carte ${estProprietaire() ? "compte-proprietaire" : ""}">
+      <span class="hero-surtitre">${estProprietaire() ? "Compte propriétaire" : `Profil de ${echap(c.nom)}`}</span>
       <h1>Modifier mes accès</h1>
-      <p>Choisissez votre propre nom d'utilisateur et, si vous le souhaitez, un nouveau code d'accès.</p>
+      <p>Votre mot de passe est protégé par Firebase et n'est jamais enregistré dans le site. Pour le modifier, saisissez d'abord votre mot de passe actuel.</p>
       <form id="f-compte" class="form-compte">
         <div>
           <label for="c-utilisateur">Nom d'utilisateur</label>
-          <input id="c-utilisateur" value="${echap(c.utilisateur)}" minlength="3" maxlength="24" autocomplete="username" autocapitalize="none" spellcheck="false" required>
-          <p class="note">3 à 24 caractères : lettres, chiffres, point, tiret ou tiret bas.</p>
+          <input id="c-utilisateur" value="${echap(c.utilisateur)}" minlength="3" maxlength="24" autocomplete="username" autocapitalize="none" spellcheck="false" ${estProprietaire() ? "readonly" : ""} required>
+          <p class="note">${estProprietaire() ? "L'identifiant propriétaire reste permanent." : "3 à 24 caractères : lettres, chiffres, point, tiret ou tiret bas."}</p>
         </div>
+        <div><label for="c-code-actuel">Mot de passe actuel</label><div class="champ-code"><input id="c-code-actuel" type="password" inputmode="text" autocomplete="current-password" autocapitalize="none" spellcheck="false" placeholder="Requis pour changer le mot de passe"><button type="button" class="bascule-code" data-toggle-code="c-code-actuel" aria-label="Afficher le mot de passe actuel" aria-pressed="false" title="Afficher le mot de passe"><span class="icone-oeil" aria-hidden="true"></span></button></div></div>
         <div class="form-grille">
-          <div><label for="c-code">Nouveau code</label><div class="champ-code"><input id="c-code" type="password" inputmode="text" minlength="4" maxlength="20" autocomplete="new-password" autocapitalize="none" spellcheck="false" placeholder="Laisser vide pour conserver l'actuel"><button type="button" class="bascule-code" data-toggle-code="c-code" aria-label="Afficher le nouveau code" aria-pressed="false" title="Afficher le code"><span class="icone-oeil" aria-hidden="true"></span></button></div></div>
-          <div><label for="c-code2">Confirmer le code</label><div class="champ-code"><input id="c-code2" type="password" inputmode="text" minlength="4" maxlength="20" autocomplete="new-password" autocapitalize="none" spellcheck="false" placeholder="Répétez le nouveau code"><button type="button" class="bascule-code" data-toggle-code="c-code2" aria-label="Afficher la confirmation du code" aria-pressed="false" title="Afficher le code"><span class="icone-oeil" aria-hidden="true"></span></button></div></div>
+          <div><label for="c-code">Nouveau mot de passe</label><div class="champ-code"><input id="c-code" type="password" inputmode="text" minlength="6" maxlength="64" autocomplete="new-password" autocapitalize="none" spellcheck="false" placeholder="6 caractères minimum"><button type="button" class="bascule-code" data-toggle-code="c-code" aria-label="Afficher le nouveau mot de passe" aria-pressed="false" title="Afficher le mot de passe"><span class="icone-oeil" aria-hidden="true"></span></button></div></div>
+          <div><label for="c-code2">Confirmer le mot de passe</label><div class="champ-code"><input id="c-code2" type="password" inputmode="text" minlength="6" maxlength="64" autocomplete="new-password" autocapitalize="none" spellcheck="false" placeholder="Répétez le nouveau mot de passe"><button type="button" class="bascule-code" data-toggle-code="c-code2" aria-label="Afficher la confirmation" aria-pressed="false" title="Afficher le mot de passe"><span class="icone-oeil" aria-hidden="true"></span></button></div></div>
         </div>
         <div id="c-erreur" class="erreur" hidden></div>
         <button class="btn btn-plein" type="submit">Enregistrer mes nouveaux accès</button>
@@ -826,18 +848,17 @@ function vueGestionComptes(){
   const comptes = tousLesComptes();
   return `
     <h2 class="titre-section">Gestion des comptes</h2>
-    <div class="bandeau bandeau-proprietaire"><b>Espace privé de Théo.</b> Vous pouvez consulter les identifiants et révéler les codes actuels. Ne les partagez qu'avec la personne concernée.</div>
+    <div class="bandeau bandeau-proprietaire"><b>Espace privé de Théo.</b> Les mots de passe sont protégés par Firebase : personne ne peut les afficher. En cas d'oubli, réinitialisez le compte depuis la console Firebase Authentication.</div>
     <div class="tableau-boite comptes-boite"><table>
-      <thead><tr><th>Personne</th><th>Rôle</th><th>Identifiant actuel</th><th>Code actuel</th><th>Actions</th></tr></thead>
+      <thead><tr><th>Personne</th><th>Rôle</th><th>Identifiant actuel</th><th>Sécurité</th><th>Actions</th></tr></thead>
       <tbody>${comptes.map(c=>`
         <tr>
           <td><strong>${echap(c.nom)}</strong>${c.proprietaire ? '<br><span class="note">Compte propriétaire permanent</span>' : ""}</td>
           <td><span class="etat ${c.proprietaire ? "avenir" : c.role === "admin" ? "ouvert" : "ferme"}">${c.proprietaire ? "Propriétaire" : c.role === "admin" ? "Admin" : "Utilisateur"}</span></td>
           <td><code class="acces-code">${echap(c.utilisateur)}</code></td>
-          <td><input class="code-secret" id="secret-${c.id}" type="password" value="${echap(c.code)}" readonly aria-label="Code de ${echap(c.nom)}"></td>
+          <td><span class="etat ouvert">Protégé par Firebase</span></td>
           <td><div class="actions-cellule">
-            <button class="btn btn-clair btn-petit" data-voir-code="${c.id}" aria-controls="secret-${c.id}">Afficher</button>
-            ${!c.proprietaire ? `<button class="btn btn-fantome btn-petit" data-reset-compte="${c.id}">Restaurer</button>` : ""}
+            ${!c.proprietaire ? `<button class="btn btn-fantome btn-petit" data-reset-compte="${c.id}">Restaurer l'identifiant</button>` : '<span class="note">Compte permanent</span>'}
           </div></td>
         </tr>`).join("")}</tbody>
     </table></div>`;
@@ -1002,43 +1023,49 @@ function brancher(){
     champ.type = visible ? "password" : "text";
     b.classList.toggle("est-visible", !visible);
     b.setAttribute("aria-pressed", String(!visible));
-    b.setAttribute("aria-label", visible ? "Afficher le code" : "Masquer le code");
-    b.setAttribute("title", visible ? "Afficher le code" : "Masquer le code");
+    b.setAttribute("aria-label", visible ? "Afficher le mot de passe" : "Masquer le mot de passe");
+    b.setAttribute("title", visible ? "Afficher le mot de passe" : "Masquer le mot de passe");
     champ.focus();
   }));
 
   /* connexion */
-  $("#f-connexion")?.addEventListener("submit", e => {
+  $("#f-connexion")?.addEventListener("submit", async e => {
     e.preventDefault();
     const identifiant = $("#i-utilisateur").value, code = $("#i-code").value;
     const c = compteDe(identifiant);
-    if(!c || String(c.code) !== String(code).trim()){
-      erreurConnexion = "Nom d'utilisateur ou code d'accès incorrect. Cette plateforme est réservée aux comptes autorisés.";
+    if(!c){
+      erreurConnexion = "Nom d'utilisateur ou mot de passe incorrect.";
+      return rendre();
+    }
+    const bouton = e.submitter;
+    if(bouton) bouton.disabled = true;
+    try{
+      const {auth,sdk} = await firebasePret;
+      const resultat = await sdk.signInWithEmailAndPassword(auth, emailFirebase(c.id), code);
+      if(resultat.user.email?.toLowerCase() !== emailFirebase(c.id).toLowerCase()) throw new Error("Compte Firebase inattendu");
+    }catch(err){
+      console.error("[Tribune RAF] Connexion Firebase :",err);
+      erreurConnexion = err?.code === "auth/network-request-failed"
+        ? "Connexion internet impossible. Réessayez dans un instant."
+        : "Nom d'utilisateur ou mot de passe incorrect, ou compte Firebase non créé.";
       return rendre();
     }
     erreurConnexion = "";
     session = { compteId:c.id, utilisateur:c.utilisateur, nom:c.nom, role:c.role };
-    stock.ecrire(CLE_SESSION, JSON.stringify(session));
     vue = "matchs";
     toast(`Bienvenue ${c.nom}`, "ok");
     rendre();
   });
 
-  $("#b-quitter")?.addEventListener("click", ()=>{
-    session = null; stock.effacer(CLE_SESSION); modale = null; rendre();
+  $("#b-quitter")?.addEventListener("click", async ()=>{
+    try{ const {auth,sdk} = await firebasePret; await sdk.signOut(auth); }catch(e){}
+    session = null; modale = null; rendre();
   });
 
   $$("[data-vue]").forEach(b => b.addEventListener("click", ()=>{ vue = b.dataset.vue; modale = null; rendre(); }));
 
   /* modification des accès personnels */
   $("#f-compte")?.addEventListener("submit", sauverCompte);
-  $$('[data-voir-code]').forEach(b => b.addEventListener('click', ()=>{
-    if(!estProprietaire()) return;
-    const champ = document.getElementById('secret-' + b.dataset.voirCode);
-    const visible = champ.type === 'text';
-    champ.type = visible ? 'password' : 'text';
-    b.textContent = visible ? 'Afficher' : 'Masquer';
-  }));
   $$('[data-reset-compte]').forEach(b => b.addEventListener('click', ()=> restaurerCompte(b.dataset.resetCompte)));
 
   /* réserver / annuler */
@@ -1101,24 +1128,23 @@ async function restaurerCompte(id){
   const actuel = tousLesComptes().find(c => c.id === id);
   const base = [...CONFIG.admins,...CONFIG.utilisateurs].find(c => c.id === id);
   if(!actuel || !base) return;
-  if(!confirm(`Restaurer l'identifiant et le code d'origine de ${base.nom} ?`)) return;
+  if(!confirm(`Restaurer l'identifiant d'origine de ${base.nom} ? Le mot de passe Firebase ne sera pas modifié.`)) return;
 
   if(etat.comptes) delete etat.comptes[id];
   etat.reservations.forEach(r => {
     if(identiteResa(r) === actuel.utilisateur){ r.utilisateur = base.utilisateur; delete r.email; }
   });
   await enregistrerEtat();
-  toast(`Accès de ${base.nom} restaurés`, "ok");
+  toast(`Identifiant de ${base.nom} restauré`, "ok");
   rendre();
 }
 
 async function sauverCompte(e){
   e.preventDefault();
-  if(estProprietaire()) return;
 
-  const compte = tousLesComptes().find(c => c.id === session.compteId);
   const ancienIdentifiant = session.utilisateur;
   const utilisateur = document.getElementById("c-utilisateur").value.trim().toLowerCase();
+  const codeActuel = document.getElementById("c-code-actuel").value;
   const code = document.getElementById("c-code").value.trim();
   const confirmation = document.getElementById("c-code2").value.trim();
   const erreur = document.getElementById("c-erreur");
@@ -1129,19 +1155,36 @@ async function sauverCompte(e){
   }
   const doublon = tousLesComptes().find(c => c.id !== session.compteId && c.utilisateur.toLowerCase() === utilisateur);
   if(doublon) return refuser("Ce nom d'utilisateur est déjà utilisé. Choisissez-en un autre.");
-  if(code && (code.length < 4 || code.length > 20)) return refuser("Le nouveau code doit contenir entre 4 et 20 caractères.");
-  if(code !== confirmation) return refuser("Les deux nouveaux codes ne correspondent pas.");
+  if(code && (code.length < 6 || code.length > 64)) return refuser("Le nouveau mot de passe doit contenir entre 6 et 64 caractères.");
+  if(code !== confirmation) return refuser("Les deux nouveaux mots de passe ne correspondent pas.");
+  if(code && !codeActuel) return refuser("Saisissez votre mot de passe actuel pour confirmer le changement.");
 
-  etat.comptes ||= {};
-  etat.comptes[session.compteId] = { utilisateur, code: code || compte.code };
-  etat.reservations.forEach(r => {
-    if(identiteResa(r) === ancienIdentifiant){ r.utilisateur = utilisateur; delete r.email; }
-  });
-  await enregistrerEtat();
+  if(code){
+    try{
+      const {auth,sdk} = await firebasePret;
+      if(!auth.currentUser) return refuser("Votre session Firebase a expiré. Reconnectez-vous.");
+      const justificatif = sdk.EmailAuthProvider.credential(emailFirebase(session.compteId), codeActuel);
+      await sdk.reauthenticateWithCredential(auth.currentUser, justificatif);
+      await sdk.updatePassword(auth.currentUser, code);
+    }catch(err){
+      console.error("[Tribune RAF] Changement du mot de passe Firebase :",err);
+      return refuser(err?.code === "auth/invalid-credential"
+        ? "Le mot de passe actuel est incorrect."
+        : "Firebase n'a pas pu modifier le mot de passe. Réessayez après vous être reconnecté.");
+    }
+  }
+
+  if(!estProprietaire()){
+    etat.comptes ||= {};
+    etat.comptes[session.compteId] = { utilisateur };
+    etat.reservations.forEach(r => {
+      if(identiteResa(r) === ancienIdentifiant){ r.utilisateur = utilisateur; delete r.email; }
+    });
+    await enregistrerEtat();
+  }
 
   session = { ...session, utilisateur };
-  stock.ecrire(CLE_SESSION, JSON.stringify(session));
-  toast("Vos accès ont été modifiés", "ok");
+  toast(code ? "Votre mot de passe Firebase a été modifié" : "Votre identifiant a été modifié", "ok");
   rendre();
 }
 
@@ -1229,14 +1272,19 @@ function exporterCsv(){
    9. DÉMARRAGE + SYNCHRO
    ========================================================================== */
 (async function demarrer(){
-  const s = stock.lire(CLE_SESSION);
   etat = await chargerEtat();
-  if(s){
-    try{
-      const p = JSON.parse(s);
-      const c = p.compteId ? tousLesComptes().find(x=>x.id===p.compteId) : compteDe(p.utilisateur);
+  try{
+    const {auth,sdk} = await firebasePret;
+    const utilisateurFirebase = await new Promise(resolve => {
+      const arreter = sdk.onAuthStateChanged(auth, user => { arreter(); resolve(user); }, ()=>resolve(null));
+    });
+    if(utilisateurFirebase?.email){
+      const c = tousLesComptes().find(x => emailFirebase(x.id).toLowerCase() === utilisateurFirebase.email.toLowerCase());
       if(c) session = { compteId:c.id, utilisateur:c.utilisateur, nom:c.nom, role:c.role };
-    }catch(e){}
+    }
+  }catch(e){
+    console.error("[Tribune RAF] Initialisation Firebase :",e);
+    erreurConnexion = "Firebase Authentication est indisponible. Vérifiez votre connexion internet.";
   }
   rendre();
 
@@ -1251,7 +1299,7 @@ function exporterCsv(){
       if(JSON.stringify(frais) !== JSON.stringify(etat)){
         etat = frais;
         const c = tousLesComptes().find(x=>x.id===session.compteId);
-        if(c){ session = { compteId:c.id, utilisateur:c.utilisateur, nom:c.nom, role:c.role }; stock.ecrire(CLE_SESSION,JSON.stringify(session)); }
+        if(c) session = { compteId:c.id, utilisateur:c.utilisateur, nom:c.nom, role:c.role };
         rendre(); return;
       }
       return;
@@ -1413,7 +1461,6 @@ th{color:var(--jaune)}
 .bandeau-proprietaire{background:#fff8d2;border-color:#ead25b;margin-bottom:14px}
 .comptes-boite{margin-bottom:34px}
 .acces-code{font-family:var(--data);font-size:13px;background:#f1ece2;padding:6px 9px;border-radius:7px;white-space:nowrap}
-.code-secret{min-width:130px;padding:7px 9px;border-radius:8px;font-family:var(--data);font-size:13px;background:#fff;border:1px solid #dcd3c4}
 @media(max-width:820px){
   .entete-in{padding:10px 16px}.onglets{order:3;width:100%;overflow:auto}.onglets button{flex:1;white-space:nowrap}
   .qui em{display:none}.page{padding:22px 16px 70px}.hero-raf{padding:34px 28px;min-height:290px}.hero-score{width:135px}.hero-logo{width:82px;height:82px}
@@ -1442,16 +1489,9 @@ th{color:var(--jaune)}
 
      B. VOS COMPTES
      ----------------
-     Modifiez le bloc CONFIG en haut du fichier : les identifiants, les noms et les codes
-     d'accès à 4 chiffres. Donnez son code à chaque personne.
-
-     Sur la sécurité, honnêtement : un site statique n'a pas de serveur, donc les
-     codes sont lisibles par quiconque ouvre le code source. C'est un verrou de
-     confidentialité entre amis (personne ne réserve à la place d'un autre par
-     accident), pas une protection contre quelqu'un de déterminé. Pour 8 proches
-     et des places de foot, c'est le bon niveau. Si vous voulez une vraie
-     authentification, il faut ajouter Supabase Auth (magic link par mail) —
-     dites-le moi et je l'ajoute.
+     Les identifiants et rôles sont déclarés dans CONFIG, sans aucun mot de passe.
+     Les mots de passe sont gérés et protégés par Firebase Authentication.
+     Consultez le fichier CONFIGURATION-FIREBASE-RAF.md pour créer les comptes.
 
      C. MODE PARTAGÉ : QUE TOUT LE MONDE VOIE LES MÊMES RÉSERVATIONS
      ---------------------------------------------------------------
