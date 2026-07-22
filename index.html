@@ -29,20 +29,20 @@ const CONFIG = {
 
   /* --- Les administrateurs --------------------------------------------- */
   admins: [
-    { id: "thomas",    utilisateur: "thomas",    nom: "Thomas" },
-    { id: "sebastien", utilisateur: "sebastien", nom: "Sébastien" },
+    { id: "thomas",    utilisateur: "thomas",    nom: "Thomas",    firebaseEmail: "tpoujol@thibal-distribution.fr" },
+    { id: "sebastien", utilisateur: "sebastien", nom: "Sébastien", firebaseEmail: "sdavid@thibal-distribution.fr" },
     { id: "theo",      utilisateur: "theo",      nom: "Théo", firebaseEmail: "theobestion@gmail.com" },
   ],
 
   /* --- Les utilisateurs ------------------------------------------------- */
   utilisateurs: [
     { id: "sandrine", utilisateur: "sandrine", nom: "Sandrine" },
-    { id: "romain",   utilisateur: "romain",   nom: "Romain" },
-    { id: "justin",   utilisateur: "justin",   nom: "Justin" },
-    { id: "mathieu",  utilisateur: "mathieu",  nom: "Mathieu" },
-    { id: "julien",   utilisateur: "julien",   nom: "Julien" },
-    { id: "vincent",  utilisateur: "vincent",  nom: "Vincent" },
-    { id: "yannick",  utilisateur: "yannick",  nom: "Yannick" },
+    { id: "romain",   utilisateur: "romain",   nom: "Romain",   firebaseEmail: "rcadenet@thibal-distribution.fr" },
+    { id: "justin",   utilisateur: "justin",   nom: "Justin",   firebaseEmail: "jmignonnac@thibal-distribution.fr" },
+    { id: "mathieu",  utilisateur: "mathieu",  nom: "Mathieu",  firebaseEmail: "mtravers@thibal-distribution.fr" },
+    { id: "julien",   utilisateur: "julien",   nom: "Julien",   firebaseEmail: "commercial1@liquiere.fr" },
+    { id: "vincent",  utilisateur: "vincent",  nom: "Vincent",  firebaseEmail: "vliquiere@liquiere.fr" },
+    { id: "yannick",  utilisateur: "yannick",  nom: "Yannick",  firebaseEmail: "ysaussol@thibal-distribution.fr" },
   ],
 
   /* Compte propriétaire permanent : il ne peut pas être modifié dans le site. */
@@ -482,6 +482,52 @@ function estInitialise(d){
   return !!(d && d.init === true && Array.isArray(d.matchs) && Array.isArray(d.reservations));
 }
 
+// Les anciennes versions pouvaient enregistrer une réservation avec l'adresse
+// mail, puis une seconde avec le prénom. On rattache ces deux formes au même
+// compte et, pour un même match, on conserve uniquement la modification la plus
+// récente afin de ne pas compter deux fois la même personne.
+function normaliserReservations(d){
+  const comptes = [...CONFIG.admins, ...CONFIG.utilisateurs].map(c => ({
+    ...c,
+    utilisateur: d.comptes?.[c.id]?.utilisateur || c.utilisateur,
+    emails: [c.firebaseEmail, `${c.id}@${CONFIG.firebaseEmailDomain}`]
+      .filter(Boolean).map(v => String(v).trim().toLowerCase()),
+  }));
+  const cle = v => String(v || "").trim().toLowerCase();
+  const parIdentite = new Map();
+  let changees = false;
+  let doublons = 0;
+
+  d.reservations.forEach(originale => {
+    const r = { ...originale };
+    const identite = cle(r.utilisateur || r.email);
+    const compte = comptes.find(c => cle(c.utilisateur) === identite || c.emails.includes(identite));
+    if(compte){
+      if(r.utilisateur !== compte.utilisateur || Object.prototype.hasOwnProperty.call(r,"email")) changees = true;
+      r.utilisateur = compte.utilisateur;
+      r.nom = compte.nom;
+      delete r.email;
+    }
+
+    const identiteFinale = cle(r.utilisateur || r.email);
+    const k = `${r.matchId}::${identiteFinale}`;
+    const precedente = parIdentite.get(k);
+    if(!precedente){
+      parIdentite.set(k, r);
+      return;
+    }
+
+    doublons += 1;
+    changees = true;
+    const datePrecedente = Date.parse(precedente.majLe || precedente.creeLe || 0) || 0;
+    const dateCourante = Date.parse(r.majLe || r.creeLe || 0) || 0;
+    if(dateCourante >= datePrecedente) parIdentite.set(k, r);
+  });
+
+  if(changees) d.reservations = [...parIdentite.values()];
+  return { changees, doublons };
+}
+
 // Met à jour un état existant si le fichier apporte un calendrier plus récent.
 async function migrer(d){
   let securise = false;
@@ -495,8 +541,11 @@ async function migrer(d){
       securise = true;
     }
   });
+  const nettoyage = normaliserReservations(d);
+  if(nettoyage.changees) securise = true;
   if(d.version === CALENDRIER_VERSION){
     if(securise) await enregistrerEtat(d);
+    if(nettoyage.doublons) console.info(`[Tribune RAF] ${nettoyage.doublons} réservation(s) en double supprimée(s).`);
     return d;
   }
   const neuf = etatInitial();
